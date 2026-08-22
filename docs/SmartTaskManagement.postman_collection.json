@@ -1,0 +1,370 @@
+{
+  "info": {
+    "_postman_id": "4d2d8bf6-98e1-4c2d-9b0f-4d9f7b8e7a10",
+    "name": "Smart Task Management System",
+    "description": "API examples generated from the current controller routes and DTO contracts. Set the companion environment locally. The refresh token is managed by the Postman cookie jar; never paste a refresh token, password, API key, or SQL credential into this collection.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "https://localhost:7173", "type": "string" },
+    { "key": "accessToken", "value": "", "type": "string" },
+    { "key": "projectId", "value": "00000000-0000-0000-0000-000000000002", "type": "string" },
+    { "key": "taskId", "value": "00000000-0000-0000-0000-000000000003", "type": "string" },
+    { "key": "userId", "value": "00000000-0000-0000-0000-000000000001", "type": "string" },
+    { "key": "email", "value": "replace-locally@example.invalid", "type": "string" },
+    { "key": "password", "value": "<set-locally>", "type": "string" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      { "key": "token", "value": "{{accessToken}}", "type": "string" }
+    ]
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"email\": \"{{email}}\", \"password\": \"{{password}}\", \"firstName\": \"API\", \"lastName\": \"Tester\" }",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/v1/auth/register",
+            "description": "Creates a Team Member account. Registration does not accept a role."
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"email\": \"{{email}}\", \"password\": \"{{password}}\" }",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/v1/auth/login",
+            "description": "Stores data.accessToken. The refresh token is an HttpOnly cookie handled by the Postman cookie jar."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body && body.data && body.data.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', body.data.accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh token",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/auth/refresh",
+            "description": "Uses and rotates the smart-task-refresh-token cookie captured from Login."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body && body.data && body.data.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', body.data.accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/auth/logout",
+            "description": "Revokes the refresh cookie represented in the Postman cookie jar."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.collectionVariables.unset('accessToken');"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Current user",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/auth/me"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Projects",
+      "item": [
+        {
+          "name": "List projects (search, sort, pagination)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/projects?search=portal&sortBy=createdAt&sortDirection=desc&page=1&pageSize=20"
+          }
+        },
+        {
+          "name": "Create project",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"name\": \"Customer Portal\", \"description\": \"Build the customer-facing portal.\", \"projectManagerId\": \"{{userId}}\" }",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/v1/projects",
+            "description": "For a Project Manager, projectManagerId must be the current user. An Admin can select an active Admin or Project Manager."
+          }
+        },
+        {
+          "name": "Get project details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/projects/{{projectId}}"
+          }
+        },
+        {
+          "name": "Update project",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"name\": \"Customer Portal - Updated\", \"description\": \"Updated portal scope.\", \"projectManagerId\": \"{{userId}}\" }",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/v1/projects/{{projectId}}"
+          }
+        },
+        {
+          "name": "Delete project",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/projects/{{projectId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Project members",
+      "item": [
+        {
+          "name": "List project members",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/projects/{{projectId}}/members"
+          }
+        },
+        {
+          "name": "Add project member",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"userId\": \"{{userId}}\" }",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/v1/projects/{{projectId}}/members"
+          }
+        },
+        {
+          "name": "Remove project member",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/projects/{{projectId}}/members/{{userId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tasks",
+      "item": [
+        {
+          "name": "Create task",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"title\": \"Implement login page\", \"description\": \"Create the responsive login page and connect it to authentication.\", \"assignedToUserId\": null, \"status\": 0, \"priority\": 1, \"dueDate\": \"2026-09-01T00:00:00Z\" }",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/projects/{{projectId}}/tasks"
+          }
+        },
+        {
+          "name": "List tasks (search, filter, sort, pagination)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/projects/{{projectId}}/tasks?keyword=login&status=0&priority=1&assignedUserId={{userId}}&dueDateFrom=2026-08-22T00:00:00Z&dueDateTo=2026-09-30T23:59:59Z&pageNumber=1&pageSize=10&sortColumn=createdAt&sortDirection=desc",
+            "description": "Status and priority use numeric enum values. Omit optional filters when they are not needed."
+          }
+        },
+        {
+          "name": "Get task details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/tasks/{{taskId}}"
+          }
+        },
+        {
+          "name": "Update task",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"title\": \"Implement responsive login page\", \"description\": \"Implement validation, authentication integration, error handling, and accessible feedback.\", \"assignedToUserId\": \"{{userId}}\", \"status\": 1, \"priority\": 2, \"dueDate\": \"2026-09-05T00:00:00Z\" }",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/tasks/{{taskId}}",
+            "description": "Full update is available to Admins and the owning Project Manager. Team Members receive 403 and must use the status endpoint for assigned tasks."
+          }
+        },
+        {
+          "name": "Delete task",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/tasks/{{taskId}}"
+          }
+        },
+        {
+          "name": "Assign or unassign task",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"assignedUserId\": \"{{userId}}\" }",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/tasks/{{taskId}}/assignment",
+            "description": "Use null for assignedUserId to unassign. The selected user must be active and a member of the task project."
+          }
+        },
+        {
+          "name": "Update task status",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"status\": 1 }",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/tasks/{{taskId}}/status",
+            "description": "Status values: 0 ToDo, 1 InProgress, 2 Completed, 3 Cancelled. An assigned Team Member may update only this field."
+          }
+        },
+        {
+          "name": "Update task priority",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"priority\": 2 }",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/tasks/{{taskId}}/priority",
+            "description": "Priority values: 0 Low, 1 Medium, 2 High, 3 Critical."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "Dashboard summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/dashboard/summary?upcomingDays=7",
+            "description": "Returns project/task totals, status and priority counts, completed/pending counts, and incomplete tasks due within the requested window."
+          }
+        }
+      ]
+    },
+    {
+      "name": "AI",
+      "item": [
+        {
+          "name": "Improve task description",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"description\": \"make login page\" }",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/ai/improve-task-description",
+            "description": "Requires Ollama running at the configured backend endpoint. Input length must be 5-2000 characters."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Operations",
+      "item": [
+        {
+          "name": "Health live",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health/live"
+          }
+        },
+        {
+          "name": "Health ready",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health/ready",
+            "description": "Includes the SQL Server readiness check and may fail when the database is unavailable."
+          }
+        }
+      ]
+    }
+  ]
+}
