@@ -12,13 +12,28 @@ public sealed record UpdateProjectRequest(
 
 public sealed record AddProjectMemberRequest(Guid UserId);
 
+public sealed record AvailableProjectMemberQuery(
+    string? Keyword = null,
+    int PageNumber = 1,
+    int PageSize = 20);
+
+public sealed record AvailableProjectMemberResponse(
+    Guid UserId,
+    string FirstName,
+    string LastName,
+    string DisplayName,
+    string Email,
+    string Role);
+
 public sealed record ProjectMemberResponse(
     Guid UserId,
     string Email,
     string FirstName,
     string LastName,
     Guid AddedByUserId,
-    DateTime AddedAtUtc);
+    DateTime AddedAtUtc,
+    string? DisplayName = null,
+    string? Role = null);
 
 public sealed record ProjectListQuery(
     string? Search = null,
@@ -34,4 +49,8 @@ public sealed record ProjectResponse(
     Guid ProjectManagerId,
     Guid CreatedByUserId,
     DateTime CreatedAtUtc,
-    DateTime UpdatedAtUtc);
+    DateTime UpdatedAtUtc,
+    string? ProjectManagerName = null,
+    string? ProjectManagerEmail = null,
+    string? CreatedByUserName = null,
+    string? CreatedByUserEmail = null);

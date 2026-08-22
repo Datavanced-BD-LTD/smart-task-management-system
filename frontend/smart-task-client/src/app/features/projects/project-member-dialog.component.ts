@@ -1,90 +1,269 @@
-import { Component, inject } from '@angular/core';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { AddProjectMemberRequest } from '../../core/models/project.model';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import {
+  catchError,
+  debounceTime,
+  distinctUntilChanged,
+  map,
+  of,
+  startWith,
+  switchMap,
+  tap,
+} from 'rxjs';
+import {
+  AddProjectMemberRequest,
+  AvailableProjectMemberResponse,
+} from '../../core/models/project.model';
+import { ApiErrorService } from '../../core/services/api-error.service';
+import { ProjectsService } from './projects.service';
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+export interface ProjectMemberDialogData {
+  readonly projectId: string;
+}
 
 @Component({
   imports: [
+    MatAutocompleteModule,
     MatButtonModule,
     MatDialogModule,
     MatFormFieldModule,
     MatInputModule,
+    MatProgressBarModule,
     ReactiveFormsModule,
   ],
   selector: 'app-project-member-dialog',
   template: `
     <h2 mat-dialog-title>Add project member</h2>
 
-    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <form (ngSubmit)="submit()" novalidate>
       <mat-dialog-content class="dialog-content">
-        <p>Only active Team Members can be added to a project.</p>
+        <p>Search active Team Members by name or email.</p>
+
         <mat-form-field appearance="outline">
-          <mat-label>Team Member User ID</mat-label>
-          <input matInput formControlName="userId" autocomplete="off" />
-          @if (errorMessage()) {
-            <mat-error>{{ errorMessage() }}</mat-error>
+          <mat-label>Search team members</mat-label>
+          <input
+            matInput
+            [formControl]="searchControl"
+            [matAutocomplete]="memberAutocomplete"
+            autocomplete="off"
+            aria-label="Search team members"
+          />
+          <mat-autocomplete
+            #memberAutocomplete="matAutocomplete"
+            [displayWith]="displayOption"
+            (optionSelected)="selectMember($event)"
+          >
+            @if (loading()) {
+              <mat-option disabled>Searching team members...</mat-option>
+            }
+
+            @for (member of availableMembers(); track member.userId) {
+              <mat-option [value]="member">
+                <span class="member-name">{{ memberDisplayName(member) }}</span>
+                <span class="member-details">
+                  {{ member.email }} - {{ roleLabel(member.role) }}
+                </span>
+              </mat-option>
+            }
+
+            @if (!loading() && hasSearched() && availableMembers().length === 0) {
+              <mat-option disabled>No available team members found.</mat-option>
+            }
+          </mat-autocomplete>
+          @if (selectionError()) {
+            <mat-error>{{ selectionError() }}</mat-error>
           }
         </mat-form-field>
+
+        @if (loading()) {
+          <mat-progress-bar mode="indeterminate" aria-label="Searching team members" />
+        }
+
+        @if (selectedMember(); as member) {
+          <div class="selected-member" role="status">
+            <strong>{{ memberDisplayName(member) }}</strong>
+            <span>{{ member.email }} - {{ roleLabel(member.role) }}</span>
+          </div>
+        }
+
+        @if (errorMessage(); as error) {
+          <p class="error-message" role="alert">{{ error }}</p>
+        }
       </mat-dialog-content>
 
       <mat-dialog-actions align="end">
         <button mat-button type="button" mat-dialog-close>Cancel</button>
-        <button mat-flat-button type="submit">Add member</button>
+        <button mat-flat-button type="submit" [disabled]="loading()">Add member</button>
       </mat-dialog-actions>
     </form>
   `,
   styles: `
+    :host {
+      display: block;
+      min-width: 0;
+    }
+
     .dialog-content {
-      min-width: min(32rem, 75vw);
+      display: grid;
+      gap: 0.75rem;
+      min-width: min(32rem, 78vw);
       padding-top: 0.5rem;
     }
 
     p {
       color: #5f6368;
-      margin-top: 0;
+      margin: 0;
     }
 
     mat-form-field {
       width: 100%;
     }
+
+    .member-name,
+    .member-details {
+      display: block;
+    }
+
+    .member-details,
+    .selected-member span {
+      color: #5f6368;
+      font-size: 0.85rem;
+    }
+
+    .selected-member {
+      background: #f1f4fb;
+      border-radius: 0.5rem;
+      display: grid;
+      gap: 0.25rem;
+      padding: 0.75rem;
+    }
+
+    .error-message {
+      color: #b3261e;
+    }
+
+    @media (max-width: 620px) {
+      .dialog-content {
+        min-width: auto;
+      }
+    }
   `,
 })
 export class ProjectMemberDialogComponent {
-  private readonly formBuilder = inject(NonNullableFormBuilder);
+  private readonly data = inject<ProjectMemberDialogData>(MAT_DIALOG_DATA);
   private readonly dialogRef = inject(MatDialogRef<ProjectMemberDialogComponent>);
+  private readonly projectsService = inject(ProjectsService);
+  private readonly apiErrorService = inject(ApiErrorService);
+  private readonly destroyRef = inject(DestroyRef);
 
-  readonly form = this.formBuilder.group({
-    userId: ['', [Validators.required, Validators.pattern(UUID_PATTERN)]],
-  });
+  readonly searchControl = new FormControl('', { nonNullable: true });
+  readonly availableMembers = signal<readonly AvailableProjectMemberResponse[]>([]);
+  readonly selectedMember = signal<AvailableProjectMemberResponse | null>(null);
+  readonly loading = signal(false);
+  readonly hasSearched = signal(false);
+  readonly errorMessage = signal<string | null>(null);
+  readonly selectionError = signal<string | null>(null);
 
-  errorMessage(): string {
-    const control = this.form.controls.userId;
+  constructor() {
+    this.searchControl.valueChanges
+      .pipe(
+        startWith(''),
+        map((value) => value.trim()),
+        debounceTime(300),
+        distinctUntilChanged(),
+        tap(() => {
+          this.loading.set(true);
+          this.hasSearched.set(true);
+          this.errorMessage.set(null);
+        }),
+        switchMap((keyword) =>
+          this.projectsService
+            .listAvailableMembers(this.data.projectId, {
+              keyword,
+              pageNumber: 1,
+              pageSize: 20,
+            })
+            .pipe(
+              catchError((error: unknown) => {
+                this.errorMessage.set(this.apiErrorService.getMessage(error));
+                return of(null);
+              }),
+            ),
+        ),
+        tap(() => this.loading.set(false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((response) => {
+        if (!response) {
+          this.availableMembers.set([]);
+          return;
+        }
 
-    if (!control.touched && !control.dirty) {
+        if (response.success && response.data) {
+          this.availableMembers.set(response.data.items);
+          return;
+        }
+
+        this.availableMembers.set([]);
+        this.errorMessage.set(response.message || 'Available team members could not be loaded.');
+      });
+  }
+
+  selectMember(event: MatAutocompleteSelectedEvent): void {
+    const member = event.option.value as AvailableProjectMemberResponse;
+    this.selectedMember.set(member);
+    this.selectionError.set(null);
+    this.searchControl.setValue(member.displayName, { emitEvent: false });
+  }
+
+  displayOption = (value: AvailableProjectMemberResponse | string | null): string => {
+    if (!value) {
       return '';
     }
 
-    if (control.hasError('required')) {
-      return 'User ID is required.';
+    return typeof value === 'string' ? value : this.memberDisplayName(value);
+  };
+
+  memberDisplayName(member: AvailableProjectMemberResponse): string {
+    const displayName = member.displayName?.trim();
+
+    if (displayName) {
+      return displayName;
     }
 
-    return control.hasError('pattern') ? 'Enter a valid user ID.' : '';
+    const name = `${member.firstName} ${member.lastName}`.trim();
+    return name || member.email || 'Unknown user';
+  }
+
+  roleLabel(role: string | null | undefined): string {
+    switch (role?.toLowerCase()) {
+      case 'projectmanager':
+        return 'Project Manager';
+      case 'teammember':
+        return 'Team Member';
+      case 'admin':
+        return 'Admin';
+      default:
+        return role || 'Unknown role';
+    }
   }
 
   submit(): void {
-    if (this.form.invalid) {
-      this.form.markAllAsTouched();
+    const member = this.selectedMember();
+
+    if (!member) {
+      this.selectionError.set('Select a team member from the search results.');
       return;
     }
 
-    const request: AddProjectMemberRequest = {
-      userId: this.form.controls.userId.value.trim(),
-    };
+    const request: AddProjectMemberRequest = { userId: member.userId };
     this.dialogRef.close(request);
   }
 }

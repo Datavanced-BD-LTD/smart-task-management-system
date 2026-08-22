@@ -21,6 +21,7 @@ describe('ProjectFormDialogComponent', () => {
           provide: AuthService,
           useValue: {
             currentRoles: vi.fn(() => ['Admin']),
+            currentUser: vi.fn(() => null),
           },
         },
       ],
@@ -33,13 +34,14 @@ describe('ProjectFormDialogComponent', () => {
   }
 
   it('validates the required project name', () => {
-    const { component, close } = createFixture({});
+    const { fixture, component, close } = createFixture({});
 
     component.submit();
 
     expect(component.form.invalid).toBe(true);
     expect(component.getError('name')).toBe('Project name is required.');
     expect(close).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.textContent).not.toContain('11111111-1111-4111-8111-111111111111');
   });
 
   it('loads existing project data for update', () => {
@@ -49,6 +51,7 @@ describe('ProjectFormDialogComponent', () => {
     expect(component.form.controls.name.value).toBe(project.name);
     expect(component.form.controls.description.value).toBe(project.description);
     expect(component.form.controls.projectManagerId.value).toBe(project.projectManagerId);
+    expect(component.projectManagerDisplayName()).toBe('Unknown user');
   });
 });
 

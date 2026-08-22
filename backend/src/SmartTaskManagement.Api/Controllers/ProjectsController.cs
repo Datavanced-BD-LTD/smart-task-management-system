@@ -11,7 +11,8 @@ namespace SmartTaskManagement.Api.Controllers;
 [Route("api/v1/projects")]
 [Authorize]
 public sealed class ProjectsController(
-    ProjectService projectService) : ControllerBase
+    ProjectService projectService,
+    ProjectMembershipService membershipService) : ControllerBase
 {
     [HttpPost]
     public async Task<ActionResult<ApiResponse<ProjectResponse>>> Create(
@@ -75,6 +76,26 @@ public sealed class ProjectsController(
             cancellationToken);
 
         return Ok(ApiResponseFactory.Success(HttpContext, project, "Project retrieved successfully."));
+    }
+
+    [HttpGet("{projectId:guid}/available-members")]
+    public async Task<ActionResult<ApiResponse<PagedResponse<AvailableProjectMemberResponse>>>>
+        ListAvailableMembers(
+            Guid projectId,
+            [FromQuery] AvailableProjectMemberQuery query,
+            CancellationToken cancellationToken)
+    {
+        var members = await membershipService.ListAvailableAsync(
+            projectId,
+            query,
+            GetCurrentUserId(),
+            GetCurrentUserRoles(),
+            cancellationToken);
+
+        return Ok(ApiResponseFactory.Success(
+            HttpContext,
+            members,
+            "Available project members retrieved successfully."));
     }
 
     [HttpGet]

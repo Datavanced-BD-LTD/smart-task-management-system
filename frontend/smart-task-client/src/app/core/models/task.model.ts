@@ -16,6 +16,11 @@ export interface TaskResponse {
   readonly dueDate: string | null;
   readonly createdAtUtc: string;
   readonly updatedAtUtc: string | null;
+  readonly assignedUserName?: string | null;
+  readonly assignedUserEmail?: string | null;
+  readonly createdByUserName?: string | null;
+  readonly createdByUserEmail?: string | null;
+  readonly projectName?: string | null;
 }
 
 export interface CreateTaskRequest {

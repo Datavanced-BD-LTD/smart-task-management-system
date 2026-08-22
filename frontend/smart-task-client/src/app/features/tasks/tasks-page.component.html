@@ -247,7 +247,10 @@
                 <ng-container matColumnDef="assignedTo">
                   <th mat-header-cell *matHeaderCellDef>Assigned user</th>
                   <td mat-cell *matCellDef="let task">
-                    <span>{{ memberName(task.assignedToUserId) }}</span>
+                    <strong>{{ assignedUserLabel(task) }}</strong>
+                    @if (task.assignedUserEmail) {
+                      <span class="identity-detail">{{ task.assignedUserEmail }}</span>
+                    }
                     @if (canManageTasks()) {
                       <button
                         mat-button
@@ -258,6 +261,16 @@
                       >
                         {{ task.assignedToUserId ? 'Reassign' : 'Assign' }}
                       </button>
+                    }
+                  </td>
+                </ng-container>
+
+                <ng-container matColumnDef="createdBy">
+                  <th mat-header-cell *matHeaderCellDef>Created by</th>
+                  <td mat-cell *matCellDef="let task">
+                    <strong>{{ createdByLabel(task) }}</strong>
+                    @if (task.createdByUserEmail) {
+                      <span class="identity-detail">{{ task.createdByUserEmail }}</span>
                     }
                   </td>
                 </ng-container>

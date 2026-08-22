@@ -33,7 +33,10 @@ export interface TaskAssignmentDialogData {
             <mat-option value="">Unassigned</mat-option>
             @for (member of data.members; track member.userId) {
               <mat-option [value]="member.userId">
-                {{ member.firstName }} {{ member.lastName }}
+                <span class="member-name">{{ memberDisplayName(member) }}</span>
+                <span class="member-details">
+                  {{ member.email }} - {{ roleLabel(member.role) }}
+                </span>
               </mat-option>
             }
           </mat-select>
@@ -60,6 +63,16 @@ export interface TaskAssignmentDialogData {
     mat-form-field {
       width: 100%;
     }
+
+    .member-name,
+    .member-details {
+      display: block;
+    }
+
+    .member-details {
+      color: #7b8494;
+      font-size: 0.85rem;
+    }
   `,
 })
 export class TaskAssignmentDialogComponent {
@@ -70,6 +83,30 @@ export class TaskAssignmentDialogComponent {
   readonly form = this.formBuilder.group({
     assignedUserId: [this.data.task.assignedToUserId ?? ''],
   });
+
+  memberDisplayName(member: ProjectMemberResponse): string {
+    const displayName = member.displayName?.trim();
+
+    if (displayName) {
+      return displayName;
+    }
+
+    const name = `${member.firstName} ${member.lastName}`.trim();
+    return name || member.email || 'Unknown user';
+  }
+
+  roleLabel(role: string | null | undefined): string {
+    switch (role?.toLowerCase()) {
+      case 'projectmanager':
+        return 'Project Manager';
+      case 'teammember':
+        return 'Team Member';
+      case 'admin':
+        return 'Admin';
+      default:
+        return role || 'Unknown role';
+    }
+  }
 
   submit(): void {
     const request: AssignTaskRequest = {

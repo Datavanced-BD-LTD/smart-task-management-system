@@ -60,6 +60,41 @@ public sealed class EfTaskStore(ApplicationDbContext dbContext) : ITaskStore
             .SingleOrDefaultAsync(taskItem => taskItem.Id == taskId, cancellationToken);
     }
 
+    public Task<TaskResponse?> FindResponseByIdAsync(
+        Guid taskId,
+        CancellationToken cancellationToken)
+    {
+        return dbContext.TaskItems
+            .AsNoTracking()
+            .Where(taskItem => taskItem.Id == taskId)
+            .Select(taskItem => new TaskResponse(
+                taskItem.Id,
+                taskItem.ProjectId,
+                taskItem.Title,
+                taskItem.Description,
+                taskItem.AssignedToUserId,
+                taskItem.CreatedByUserId,
+                taskItem.Status,
+                taskItem.Priority,
+                taskItem.DueDate,
+                taskItem.CreatedAtUtc,
+                taskItem.UpdatedAtUtc,
+                taskItem.AssignedToUser == null
+                    ? null
+                    : taskItem.AssignedToUser.FirstName + " " + taskItem.AssignedToUser.LastName,
+                taskItem.AssignedToUser == null
+                    ? null
+                    : taskItem.AssignedToUser.Email,
+                taskItem.CreatedByUser == null
+                    ? null
+                    : taskItem.CreatedByUser.FirstName + " " + taskItem.CreatedByUser.LastName,
+                taskItem.CreatedByUser == null
+                    ? null
+                    : taskItem.CreatedByUser.Email,
+                taskItem.Project == null ? null : taskItem.Project.Name))
+            .SingleOrDefaultAsync(cancellationToken);
+    }
+
     public async Task<PagedResult<TaskResponse>> ListByProjectAsync(
         Guid projectId,
         TaskListQuery query,
@@ -156,7 +191,20 @@ public sealed class EfTaskStore(ApplicationDbContext dbContext) : ITaskStore
             taskItem.Priority,
             taskItem.DueDate,
             taskItem.CreatedAtUtc,
-            taskItem.UpdatedAtUtc));
+            taskItem.UpdatedAtUtc,
+            taskItem.AssignedToUser == null
+                ? null
+                : taskItem.AssignedToUser.FirstName + " " + taskItem.AssignedToUser.LastName,
+            taskItem.AssignedToUser == null
+                ? null
+                : taskItem.AssignedToUser.Email,
+            taskItem.CreatedByUser == null
+                ? null
+                : taskItem.CreatedByUser.FirstName + " " + taskItem.CreatedByUser.LastName,
+            taskItem.CreatedByUser == null
+                ? null
+                : taskItem.CreatedByUser.Email,
+            taskItem.Project == null ? null : taskItem.Project.Name));
 
         IReadOnlyCollection<TaskResponse> items = skip > int.MaxValue
             ? []

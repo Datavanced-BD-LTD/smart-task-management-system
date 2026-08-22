@@ -21,7 +21,10 @@ import {
   ProjectConfirmationDialogData,
 } from './project-confirmation-dialog.component';
 import { ProjectFormDialogComponent, ProjectFormDialogData } from './project-form-dialog.component';
-import { ProjectMemberDialogComponent } from './project-member-dialog.component';
+import {
+  ProjectMemberDialogComponent,
+  ProjectMemberDialogData,
+} from './project-member-dialog.component';
 import { ProjectsService } from './projects.service';
 
 @Component({
@@ -204,8 +207,13 @@ export class ProjectDetailsPageComponent implements OnInit {
       return;
     }
 
+    const data: ProjectMemberDialogData = { projectId: this.projectId };
     this.dialog
-      .open(ProjectMemberDialogComponent, { width: 'min(42rem, 94vw)' })
+      .open(ProjectMemberDialogComponent, {
+        data,
+        width: 'min(42rem, calc(100vw - 2rem))',
+        maxWidth: 'calc(100vw - 2rem)',
+      })
       .afterClosed()
       .pipe(
         filter((request): request is AddProjectMemberRequest => Boolean(request)),
@@ -258,6 +266,34 @@ export class ProjectDetailsPageComponent implements OnInit {
 
   trackMember(_index: number, member: ProjectMemberResponse): string {
     return member.userId;
+  }
+
+  memberDisplayName(member: ProjectMemberResponse): string {
+    const displayName = member.displayName?.trim();
+
+    if (displayName) {
+      return displayName;
+    }
+
+    const name = `${member.firstName} ${member.lastName}`.trim();
+    return name || member.email || 'Unknown user';
+  }
+
+  roleLabel(role: string | null | undefined): string {
+    switch (role?.toLowerCase()) {
+      case 'projectmanager':
+        return 'Project Manager';
+      case 'teammember':
+        return 'Team Member';
+      case 'admin':
+        return 'Admin';
+      default:
+        return role || 'Unknown role';
+    }
+  }
+
+  userLabel(name: string | null | undefined, email: string | null | undefined): string {
+    return name?.trim() || email?.trim() || 'Unknown user';
   }
 
   private hasRole(role: string): boolean {

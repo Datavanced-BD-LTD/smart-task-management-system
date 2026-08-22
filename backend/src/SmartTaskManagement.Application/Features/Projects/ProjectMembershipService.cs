@@ -3,6 +3,7 @@ using SmartTaskManagement.Application.Abstractions.Authentication;
 using SmartTaskManagement.Application.Abstractions.Common;
 using SmartTaskManagement.Application.Abstractions.Projects;
 using SmartTaskManagement.Application.Common.Exceptions;
+using SmartTaskManagement.Application.Common.Models;
 using SmartTaskManagement.Domain.Constants;
 using SmartTaskManagement.Domain.Entities;
 
@@ -12,8 +13,34 @@ public sealed class ProjectMembershipService(
     IProjectStore projectStore,
     IAuthStore authStore,
     ISystemClock systemClock,
-    IValidator<AddProjectMemberRequest> addMemberValidator)
+    IValidator<AddProjectMemberRequest> addMemberValidator,
+    IValidator<AvailableProjectMemberQuery> availableMemberQueryValidator)
 {
+    public async Task<PagedResponse<AvailableProjectMemberResponse>> ListAvailableAsync(
+        Guid projectId,
+        AvailableProjectMemberQuery query,
+        Guid currentUserId,
+        IReadOnlyCollection<string> roles,
+        CancellationToken cancellationToken)
+    {
+        await ValidateAsync(availableMemberQueryValidator, query, cancellationToken);
+
+        var project = await GetProjectAsync(projectId, cancellationToken);
+        EnsureCanManage(project, currentUserId, roles);
+
+        var availableMembers = await projectStore.ListAvailableMembersAsync(
+            projectId,
+            query,
+            cancellationToken);
+
+        return new PagedResponse<AvailableProjectMemberResponse>(
+            availableMembers.Items,
+            availableMembers.Page,
+            availableMembers.PageSize,
+            availableMembers.TotalCount,
+            availableMembers.TotalPages);
+    }
+
     public async Task<IReadOnlyCollection<ProjectMemberResponse>> ListAsync(
         Guid projectId,
         Guid currentUserId,
@@ -67,7 +94,9 @@ public sealed class ProjectMembershipService(
             user.FirstName,
             user.LastName,
             member.AddedByUserId,
-            member.AddedAtUtc);
+            member.AddedAtUtc,
+            GetDisplayName(user),
+            GetPrimaryRole(user));
     }
 
     public async Task RemoveAsync(
@@ -183,7 +212,26 @@ public sealed class ProjectMembershipService(
             member.User.FirstName,
             member.User.LastName,
             member.AddedByUserId,
-            member.AddedAtUtc);
+            member.AddedAtUtc,
+            GetDisplayName(member.User),
+            GetPrimaryRole(member.User));
+    }
+
+    private static string GetDisplayName(User user)
+    {
+        var displayName = $"{user.FirstName} {user.LastName}".Trim();
+        return string.IsNullOrWhiteSpace(displayName)
+            ? user.Email
+            : displayName;
+    }
+
+    private static string? GetPrimaryRole(User user)
+    {
+        return user.UserRoles
+            .Where(userRole => userRole.Role is not null)
+            .Select(userRole => userRole.Role!.Name)
+            .OrderBy(role => role, StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault();
     }
 
     private static async Task ValidateAsync<TRequest>(

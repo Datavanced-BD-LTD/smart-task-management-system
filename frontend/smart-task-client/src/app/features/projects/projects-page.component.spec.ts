@@ -70,6 +70,8 @@ describe('ProjectsPageComponent', () => {
     expect(projectsService.list).toHaveBeenCalled();
     expect(component.projects()?.items).toHaveLength(1);
     expect(fixture.nativeElement.textContent).toContain('Alpha project');
+    expect(fixture.nativeElement.textContent).toContain('Project Manager Name');
+    expect(fixture.nativeElement.textContent).toContain('manager@example.com');
   });
 
   it('sends search, sorting and pagination changes to the API', () => {
@@ -144,6 +146,8 @@ function createProject(): ProjectResponse {
     createdByUserId: 'admin-1',
     createdAtUtc: '2026-08-22T00:00:00Z',
     updatedAtUtc: '2026-08-22T00:00:00Z',
+    projectManagerName: 'Project Manager Name',
+    projectManagerEmail: 'manager@example.com',
   };
 }
 

@@ -79,6 +79,8 @@ describe('ProjectDetailsPageComponent', () => {
     expect(projectsService.listMembers).toHaveBeenCalledWith(project.projectId);
     expect(component.project()?.name).toBe('Alpha project');
     expect(fixture.nativeElement.textContent).toContain('member@example.com');
+    expect(fixture.nativeElement.textContent).toContain('Project Manager Name');
+    expect(fixture.nativeElement.textContent).toContain('Team Member');
   });
 
   it('adds a member after the add dialog returns a request', () => {
@@ -147,6 +149,8 @@ function createProject(): ProjectResponse {
     createdByUserId: 'admin-1',
     createdAtUtc: '2026-08-22T00:00:00Z',
     updatedAtUtc: '2026-08-22T00:00:00Z',
+    projectManagerName: 'Project Manager Name',
+    projectManagerEmail: 'manager@example.com',
   };
 }
 
@@ -158,5 +162,7 @@ function createMember(): ProjectMemberResponse {
     lastName: 'Member',
     addedByUserId: 'admin-1',
     addedAtUtc: '2026-08-22T00:00:00Z',
+    displayName: 'Team Member',
+    role: 'TeamMember',
   };
 }

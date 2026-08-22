@@ -45,7 +45,7 @@ public sealed class TaskService(
         await taskStore.AddAsync(taskItem, cancellationToken);
         await taskStore.SaveChangesAsync(cancellationToken);
 
-        return ToResponse(taskItem);
+        return await GetResponseAsync(taskItem.Id, cancellationToken);
     }
 
     public async Task<PagedResponse<TaskResponse>> ListByProjectAsync(
@@ -85,7 +85,7 @@ public sealed class TaskService(
 
         await EnsureCanViewProjectAsync(project, currentUserId, roles, cancellationToken);
 
-        return ToResponse(taskItem);
+        return await GetResponseAsync(taskItem.Id, cancellationToken);
     }
 
     public async Task<TaskResponse> UpdateAsync(
@@ -117,7 +117,7 @@ public sealed class TaskService(
 
         await taskStore.SaveChangesAsync(cancellationToken);
 
-        return ToResponse(taskItem);
+        return await GetResponseAsync(taskItem.Id, cancellationToken);
     }
 
     public async Task<TaskResponse> AssignAsync(
@@ -139,7 +139,7 @@ public sealed class TaskService(
         taskItem.AssignTo(request.AssignedUserId, systemClock.UtcNow);
         await taskStore.SaveChangesAsync(cancellationToken);
 
-        return ToResponse(taskItem);
+        return await GetResponseAsync(taskItem.Id, cancellationToken);
     }
 
     public async Task<TaskResponse> UpdateStatusAsync(
@@ -165,7 +165,7 @@ public sealed class TaskService(
         taskItem.ChangeStatus(request.Status, systemClock.UtcNow);
         await taskStore.SaveChangesAsync(cancellationToken);
 
-        return ToResponse(taskItem);
+        return await GetResponseAsync(taskItem.Id, cancellationToken);
     }
 
     public async Task<TaskResponse> UpdatePriorityAsync(
@@ -186,7 +186,7 @@ public sealed class TaskService(
         taskItem.ChangePriority(request.Priority, systemClock.UtcNow);
         await taskStore.SaveChangesAsync(cancellationToken);
 
-        return ToResponse(taskItem);
+        return await GetResponseAsync(taskItem.Id, cancellationToken);
     }
 
     public async Task DeleteAsync(
@@ -399,19 +399,12 @@ public sealed class TaskService(
         }
     }
 
-    private static TaskResponse ToResponse(TaskItem taskItem)
+    private async Task<TaskResponse> GetResponseAsync(
+        Guid taskId,
+        CancellationToken cancellationToken)
     {
-        return new TaskResponse(
-            taskItem.Id,
-            taskItem.ProjectId,
-            taskItem.Title,
-            taskItem.Description,
-            taskItem.AssignedToUserId,
-            taskItem.CreatedByUserId,
-            taskItem.Status,
-            taskItem.Priority,
-            taskItem.DueDate,
-            taskItem.CreatedAtUtc,
-            taskItem.UpdatedAtUtc);
+        return await taskStore.FindResponseByIdAsync(taskId, cancellationToken)
+            ?? throw new InvalidOperationException(
+                "The task response could not be loaded after the operation completed.");
     }
 }

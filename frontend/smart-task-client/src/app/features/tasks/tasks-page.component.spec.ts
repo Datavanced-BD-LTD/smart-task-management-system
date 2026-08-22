@@ -108,6 +108,8 @@ describe('TasksPageComponent', () => {
     );
     expect(component.memberName('member-1')).toBe('Member One');
     expect(fixture.nativeElement.textContent).toContain('Prepare login');
+    expect(fixture.nativeElement.textContent).toContain('Assigned Member');
+    expect(fixture.nativeElement.textContent).toContain('creator@example.com');
   });
 
   it('sends search, filters, sorting and pagination to the API', () => {
@@ -257,5 +259,10 @@ function createTask(): TaskResponse {
     dueDate: '2026-08-30T00:00:00Z',
     createdAtUtc: '2026-08-01T00:00:00Z',
     updatedAtUtc: null,
+    assignedUserName: 'Assigned Member',
+    assignedUserEmail: 'member@example.com',
+    createdByUserName: 'Task Creator',
+    createdByUserEmail: 'creator@example.com',
+    projectName: 'Alpha project',
   };
 }

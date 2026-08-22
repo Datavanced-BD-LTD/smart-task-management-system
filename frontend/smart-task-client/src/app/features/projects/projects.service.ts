@@ -6,6 +6,8 @@ import { ApiResponse } from '../../core/models/api-response.model';
 import { PagedResponse } from '../../core/models/pagination.model';
 import {
   AddProjectMemberRequest,
+  AvailableProjectMemberQuery,
+  AvailableProjectMemberResponse,
   CreateProjectRequest,
   ProjectListQuery,
   ProjectMemberResponse,
@@ -58,6 +60,26 @@ export class ProjectsService {
   listMembers(projectId: string): Observable<ApiResponse<readonly ProjectMemberResponse[]>> {
     return this.http.get<ApiResponse<readonly ProjectMemberResponse[]>>(
       `${this.projectsUrl}/${projectId}/members`,
+    );
+  }
+
+  listAvailableMembers(
+    projectId: string,
+    query: AvailableProjectMemberQuery,
+  ): Observable<ApiResponse<PagedResponse<AvailableProjectMemberResponse>>> {
+    let params = new HttpParams()
+      .set('pageNumber', query.pageNumber)
+      .set('pageSize', query.pageSize);
+
+    const keyword = query.keyword?.trim();
+
+    if (keyword) {
+      params = params.set('keyword', keyword);
+    }
+
+    return this.http.get<ApiResponse<PagedResponse<AvailableProjectMemberResponse>>>(
+      `${this.projectsUrl}/${projectId}/available-members`,
+      { params },
     );
   }
 

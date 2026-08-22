@@ -102,6 +102,7 @@ export class TasksPageComponent implements OnInit {
     'status',
     'priority',
     'assignedTo',
+    'createdBy',
     'dueDate',
     'createdAtUtc',
     'actions',
@@ -393,10 +394,31 @@ export class TasksPageComponent implements OnInit {
     const member = this.members().find((projectMember) => projectMember.userId === userId);
 
     if (!member) {
-      return 'Project member';
+      return 'Unknown user';
     }
 
-    return `${member.firstName} ${member.lastName}`.trim() || member.email;
+    return (
+      member.displayName?.trim() ||
+      `${member.firstName} ${member.lastName}`.trim() ||
+      member.email ||
+      'Unknown user'
+    );
+  }
+
+  assignedUserLabel(task: TaskResponse): string {
+    if (!task.assignedToUserId) {
+      return 'Unassigned';
+    }
+
+    return task.assignedUserName?.trim() ||
+      task.assignedUserEmail?.trim() ||
+      this.memberName(task.assignedToUserId);
+  }
+
+  createdByLabel(task: TaskResponse): string {
+    return task.createdByUserName?.trim() ||
+      task.createdByUserEmail?.trim() ||
+      'Unknown user';
   }
 
   statusLabel(status: TaskStatus): string {

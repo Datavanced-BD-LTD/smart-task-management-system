@@ -51,7 +51,14 @@ export class ProjectsPageComponent {
   private readonly authService = inject(AuthService);
   private readonly dialog = inject(MatDialog);
 
-  readonly displayedColumns = ['name', 'description', 'createdAtUtc', 'updatedAtUtc', 'actions'];
+  readonly displayedColumns = [
+    'name',
+    'projectManager',
+    'description',
+    'createdAtUtc',
+    'updatedAtUtc',
+    'actions',
+  ];
   readonly searchControl = new FormControl('', { nonNullable: true });
   readonly projects = signal<PagedResponse<ProjectResponse> | null>(null);
   readonly loading = signal(false);
@@ -232,6 +239,10 @@ export class ProjectsPageComponent {
 
   trackProject(_index: number, project: ProjectResponse): string {
     return project.projectId;
+  }
+
+  userLabel(name: string | null | undefined, email: string | null | undefined): string {
+    return name?.trim() || email?.trim() || 'Unknown user';
   }
 
   private hasRole(role: string): boolean {

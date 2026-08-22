@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using SmartTaskManagement.Application.Abstractions.Projects;
 using SmartTaskManagement.Application.Common.Models;
 using SmartTaskManagement.Application.Features.Projects;
+using SmartTaskManagement.Domain.Constants;
 using SmartTaskManagement.Domain.Entities;
 using SmartTaskManagement.Infrastructure.Persistence;
 
@@ -14,6 +15,8 @@ public sealed class EfProjectStore(ApplicationDbContext dbContext) : IProjectSto
         CancellationToken cancellationToken)
     {
         return dbContext.Projects
+            .Include(project => project.ProjectManager)
+            .Include(project => project.CreatedByUser)
             .SingleOrDefaultAsync(
                 project => project.ProjectId == projectId && !project.IsDeleted,
                 cancellationToken);
@@ -27,6 +30,8 @@ public sealed class EfProjectStore(ApplicationDbContext dbContext) : IProjectSto
     {
         var projects = dbContext.Projects
             .AsNoTracking()
+            .Include(project => project.ProjectManager)
+            .Include(project => project.CreatedByUser)
             .Where(project => !project.IsDeleted);
 
         if (projectManagerId.HasValue)
@@ -119,9 +124,64 @@ public sealed class EfProjectStore(ApplicationDbContext dbContext) : IProjectSto
         return await dbContext.ProjectMembers
             .AsNoTracking()
             .Include(member => member.User)
+            .ThenInclude(user => user!.UserRoles)
+            .ThenInclude(userRole => userRole.Role)
             .Where(member => member.ProjectId == projectId)
             .OrderBy(member => member.AddedAtUtc)
             .ToArrayAsync(cancellationToken);
+    }
+
+    public async Task<PagedResult<AvailableProjectMemberResponse>> ListAvailableMembersAsync(
+        Guid projectId,
+        AvailableProjectMemberQuery query,
+        CancellationToken cancellationToken)
+    {
+        var users = dbContext.Users
+            .AsNoTracking()
+            .Where(user =>
+                user.IsActive &&
+                user.UserRoles.Any(userRole =>
+                    userRole.Role != null &&
+                    userRole.Role.Name == RoleNames.TeamMember) &&
+                !dbContext.ProjectMembers.Any(member =>
+                    member.ProjectId == projectId &&
+                    member.UserId == user.UserId));
+
+        if (!string.IsNullOrWhiteSpace(query.Keyword))
+        {
+            var pattern = $"%{query.Keyword.Trim().ToLowerInvariant()}%";
+            users = users.Where(user =>
+                EF.Functions.Like(user.FirstName.ToLower(), pattern) ||
+                EF.Functions.Like(user.LastName.ToLower(), pattern) ||
+                EF.Functions.Like(user.Email.ToLower(), pattern));
+        }
+
+        var orderedUsers = users
+            .OrderBy(user => user.FirstName)
+            .ThenBy(user => user.LastName)
+            .ThenBy(user => user.Email);
+
+        var totalCount = await orderedUsers.CountAsync(cancellationToken);
+        var skip = (long)(query.PageNumber - 1) * query.PageSize;
+        var items = skip >= totalCount
+            ? []
+            : await orderedUsers
+                .Skip((int)skip)
+                .Take(query.PageSize)
+                .Select(user => new AvailableProjectMemberResponse(
+                    user.UserId,
+                    user.FirstName,
+                    user.LastName,
+                    user.FirstName + " " + user.LastName,
+                    user.Email,
+                    RoleNames.TeamMember))
+                .ToArrayAsync(cancellationToken);
+
+        return new PagedResult<AvailableProjectMemberResponse>(
+            items,
+            query.PageNumber,
+            query.PageSize,
+            totalCount);
     }
 
     public async Task AddMemberAsync(

@@ -80,6 +80,12 @@ h2 {
   overflow-wrap: anywhere;
 }
 
+.metadata-detail,
+.member-role {
+  color: #7b8494;
+  font-size: 0.85rem;
+}
+
 .members-section {
   display: grid;
   gap: 1rem;

@@ -1011,6 +1011,14 @@ public sealed class TaskServiceTests
             return Task.FromResult(taskItem);
         }
 
+        public Task<TaskResponse?> FindResponseByIdAsync(
+            Guid taskId,
+            CancellationToken cancellationToken)
+        {
+            taskItems.TryGetValue(taskId, out var taskItem);
+            return Task.FromResult(taskItem is null ? null : ToResponse(taskItem));
+        }
+
         public Task<PagedResult<TaskResponse>> ListByProjectAsync(
             Guid projectId,
             TaskListQuery query,

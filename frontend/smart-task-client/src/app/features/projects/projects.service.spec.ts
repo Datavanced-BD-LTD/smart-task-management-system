@@ -87,6 +87,27 @@ describe('ProjectsService', () => {
     expect(removeRequest.request.method).toBe('DELETE');
     removeRequest.flush(successResponse(null));
   });
+
+  it('searches available members with the project-scoped endpoint', () => {
+    service
+      .listAvailableMembers('project-1', {
+        keyword: 'ada',
+        pageNumber: 2,
+        pageSize: 10,
+      })
+      .subscribe();
+
+    const request = httpTesting.expectOne(
+      (candidate) =>
+        candidate.url === `${environment.apiBaseUrl}/v1/projects/project-1/available-members`,
+    );
+
+    expect(request.request.method).toBe('GET');
+    expect(request.request.params.get('keyword')).toBe('ada');
+    expect(request.request.params.get('pageNumber')).toBe('2');
+    expect(request.request.params.get('pageSize')).toBe('10');
+    request.flush(successResponse(null));
+  });
 });
 
 function successResponse<T>(data: T): ApiResponse<T> {

@@ -42,4 +42,9 @@ public sealed record TaskResponse(
     TaskPriority Priority,
     DateTime? DueDate,
     DateTime CreatedAtUtc,
-    DateTime? UpdatedAtUtc);
+    DateTime? UpdatedAtUtc,
+    string? AssignedUserName = null,
+    string? AssignedUserEmail = null,
+    string? CreatedByUserName = null,
+    string? CreatedByUserEmail = null,
+    string? ProjectName = null);

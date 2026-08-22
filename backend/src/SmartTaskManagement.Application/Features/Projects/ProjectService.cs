@@ -42,7 +42,7 @@ public sealed class ProjectService(
         await projectStore.AddAsync(project, cancellationToken);
         await projectStore.SaveChangesAsync(cancellationToken);
 
-        return ToResponse(project);
+        return await ToResponseAsync(project, cancellationToken);
     }
 
     public async Task<ProjectResponse> UpdateAsync(
@@ -73,7 +73,7 @@ public sealed class ProjectService(
 
         await projectStore.SaveChangesAsync(cancellationToken);
 
-        return ToResponse(project);
+        return await ToResponseAsync(project, cancellationToken);
     }
 
     public async Task DeleteAsync(
@@ -112,7 +112,7 @@ public sealed class ProjectService(
             throw new ForbiddenException("Team Members can only access projects they belong to.");
         }
 
-        return ToResponse(project);
+        return await ToResponseAsync(project, cancellationToken);
     }
 
     public async Task<PagedResponse<ProjectResponse>> ListAsync(
@@ -270,7 +270,29 @@ public sealed class ProjectService(
         }
     }
 
+    private async Task<ProjectResponse> ToResponseAsync(
+        Project project,
+        CancellationToken cancellationToken)
+    {
+        var projectManager = project.ProjectManager ?? await authStore.FindUserByIdAsync(
+            project.ProjectManagerId,
+            cancellationToken);
+        var createdByUser = project.CreatedByUser ?? await authStore.FindUserByIdAsync(
+            project.CreatedByUserId,
+            cancellationToken);
+
+        return ToResponse(project, projectManager, createdByUser);
+    }
+
     private static ProjectResponse ToResponse(Project project)
+    {
+        return ToResponse(project, project.ProjectManager, project.CreatedByUser);
+    }
+
+    private static ProjectResponse ToResponse(
+        Project project,
+        User? projectManager,
+        User? createdByUser)
     {
         return new ProjectResponse(
             project.ProjectId,
@@ -279,6 +301,23 @@ public sealed class ProjectService(
             project.ProjectManagerId,
             project.CreatedByUserId,
             project.CreatedAtUtc,
-            project.UpdatedAtUtc);
+            project.UpdatedAtUtc,
+            GetDisplayName(projectManager),
+            projectManager?.Email,
+            GetDisplayName(createdByUser),
+            createdByUser?.Email);
+    }
+
+    private static string? GetDisplayName(User? user)
+    {
+        if (user is null)
+        {
+            return null;
+        }
+
+        var displayName = $"{user.FirstName} {user.LastName}".Trim();
+        return string.IsNullOrWhiteSpace(displayName)
+            ? user.Email
+            : displayName;
     }
 }

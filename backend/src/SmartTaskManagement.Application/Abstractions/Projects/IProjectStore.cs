@@ -28,6 +28,11 @@ public interface IProjectStore
         Guid projectId,
         CancellationToken cancellationToken);
 
+    Task<PagedResult<AvailableProjectMemberResponse>> ListAvailableMembersAsync(
+        Guid projectId,
+        AvailableProjectMemberQuery query,
+        CancellationToken cancellationToken);
+
     Task AddMemberAsync(
         ProjectMember member,
         CancellationToken cancellationToken);

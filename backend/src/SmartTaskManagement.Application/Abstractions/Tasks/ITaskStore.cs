@@ -27,6 +27,10 @@ public interface ITaskStore
         Guid taskId,
         CancellationToken cancellationToken);
 
+    Task<TaskResponse?> FindResponseByIdAsync(
+        Guid taskId,
+        CancellationToken cancellationToken);
+
     Task<PagedResult<TaskResponse>> ListByProjectAsync(
         Guid projectId,
         TaskListQuery query,
