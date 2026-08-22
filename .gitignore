@@ -16,6 +16,8 @@ TestResults/
 # ASP.NET and local secrets
 **/appsettings.Local.json
 **/appsettings.Secrets.json
+**/appsettings.Development.json
+local-secrets/
 **/secrets.json
 *.pfx
 *.snk
