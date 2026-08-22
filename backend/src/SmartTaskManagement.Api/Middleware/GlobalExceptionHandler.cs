@@ -62,6 +62,9 @@ public sealed class GlobalExceptionHandler(
             InvalidTaskStatusTransitionException => StatusCodes.Status400BadRequest,
             ProjectMemberAlreadyExistsException => StatusCodes.Status409Conflict,
             DbUpdateConcurrencyException => StatusCodes.Status409Conflict,
+            AiProviderTimeoutException => StatusCodes.Status504GatewayTimeout,
+            AiProviderUnavailableException => StatusCodes.Status503ServiceUnavailable,
+            AiProviderResponseException => StatusCodes.Status502BadGateway,
             UnauthorizedAccessException => StatusCodes.Status401Unauthorized,
             _ => StatusCodes.Status500InternalServerError
         };
@@ -73,6 +76,9 @@ public sealed class GlobalExceptionHandler(
             StatusCodes.Status404NotFound => "The requested resource was not found.",
             StatusCodes.Status400BadRequest => "The request is invalid.",
             StatusCodes.Status409Conflict => "The request conflicts with existing data.",
+            StatusCodes.Status502BadGateway => "The AI provider returned an invalid response.",
+            StatusCodes.Status503ServiceUnavailable => "The AI provider is currently unavailable.",
+            StatusCodes.Status504GatewayTimeout => "The AI provider timed out. Please try again.",
             _ => "An unexpected error occurred."
         };
 
@@ -89,6 +95,9 @@ public sealed class GlobalExceptionHandler(
             StatusCodes.Status404NotFound => "NOT_FOUND",
             StatusCodes.Status400BadRequest => "INVALID_REQUEST",
             StatusCodes.Status409Conflict => "CONFLICT",
+            StatusCodes.Status502BadGateway => "AI_PROVIDER_INVALID_RESPONSE",
+            StatusCodes.Status503ServiceUnavailable => "AI_PROVIDER_UNAVAILABLE",
+            StatusCodes.Status504GatewayTimeout => "AI_PROVIDER_TIMEOUT",
             _ => "INTERNAL_SERVER_ERROR"
         };
         var failureResponse = ApiResponseFactory.Failure<object?>(

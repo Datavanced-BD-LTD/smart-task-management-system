@@ -11,6 +11,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\SmartTaskManagement.Application\SmartTaskManagement.Application.csproj" />
     <ProjectReference Include="..\..\src\SmartTaskManagement.Domain\SmartTaskManagement.Domain.csproj" />
+    <ProjectReference Include="..\..\src\SmartTaskManagement.Infrastructure\SmartTaskManagement.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

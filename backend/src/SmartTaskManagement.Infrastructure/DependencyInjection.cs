@@ -4,11 +4,13 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using SmartTaskManagement.Application.Abstractions.Authentication;
+using SmartTaskManagement.Application.Abstractions.Ai;
 using SmartTaskManagement.Application.Abstractions.Common;
 using SmartTaskManagement.Application.Abstractions.Projects;
 using SmartTaskManagement.Application.Abstractions.Tasks;
 using SmartTaskManagement.Application.Abstractions.Dashboard;
 using SmartTaskManagement.Infrastructure.Authentication;
+using SmartTaskManagement.Infrastructure.Ai;
 using SmartTaskManagement.Infrastructure.Persistence;
 using SmartTaskManagement.Infrastructure.Projects;
 using SmartTaskManagement.Infrastructure.Tasks;
@@ -45,10 +47,29 @@ public static class DependencyInjection
                 "JWT configuration is missing or invalid.")
             .ValidateOnStart();
 
+        services.AddOptions<AiOptions>()
+            .Bind(configuration.GetSection(AiOptions.SectionName))
+            .Validate(
+                options =>
+                    string.Equals(options.Provider, "Ollama", StringComparison.OrdinalIgnoreCase) &&
+                    Uri.TryCreate(options.Endpoint, UriKind.Absolute, out var endpoint) &&
+                    (endpoint.Scheme == Uri.UriSchemeHttp ||
+                     endpoint.Scheme == Uri.UriSchemeHttps) &&
+                    !string.IsNullOrWhiteSpace(options.Model) &&
+                    options.TimeoutSeconds is >= 1 and <= 120,
+                "AI configuration is missing or invalid. The supported provider is Ollama.")
+            .ValidateOnStart();
+
+        services.AddHttpClient(OllamaAiTaskDescriptionProvider.HttpClientName, client =>
+        {
+            client.Timeout = Timeout.InfiniteTimeSpan;
+        });
+
         services.AddScoped<IAuthStore, EfAuthStore>();
         services.AddScoped<IProjectStore, EfProjectStore>();
         services.AddScoped<ITaskStore, EfTaskStore>();
         services.AddScoped<IDashboardStore, EfDashboardStore>();
+        services.AddScoped<IAiTaskDescriptionProvider, OllamaAiTaskDescriptionProvider>();
         services.AddScoped<IPasswordService, AspNetPasswordService>();
         services.AddSingleton<ISystemClock, SystemClock>();
         services.AddSingleton<ITokenService, JwtTokenService>();
