@@ -1,0 +1,54 @@
+# .NET build output
+**/bin/
+**/obj/
+TestResults/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Visual Studio and IDE files
+.vs/
+.vscode/
+.idea/
+*.swp
+
+# ASP.NET and local secrets
+**/appsettings.Local.json
+**/appsettings.Secrets.json
+**/secrets.json
+*.pfx
+*.snk
+*.pem
+*.key
+
+# Node.js and Angular
+node_modules/
+dist/
+.angular/
+coverage/
+.npm/
+*.tsbuildinfo
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Local databases and logs
+*.mdf
+*.ndf
+*.ldf
+*.db
+*.sqlite
+*.sqlite3
+*.bak
+logs/
+*.log
+
+# Temporary analysis artifacts
+tmp/
+
+# OS files
+.DS_Store
+Thumbs.db

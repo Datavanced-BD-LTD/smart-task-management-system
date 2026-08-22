@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SmartTaskManagement.Api/SmartTaskManagement.Api.csproj" />
+    <Project Path="src/SmartTaskManagement.Application/SmartTaskManagement.Application.csproj" />
+    <Project Path="src/SmartTaskManagement.Domain/SmartTaskManagement.Domain.csproj" />
+    <Project Path="src/SmartTaskManagement.Infrastructure/SmartTaskManagement.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SmartTaskManagement.Tests/SmartTaskManagement.Tests.csproj" />
+  </Folder>
+</Solution>
