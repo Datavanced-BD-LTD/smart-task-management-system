@@ -1,0 +1,310 @@
+<main class="tasks-page" aria-labelledby="tasks-title">
+  @if (!projectId) {
+    <mat-card class="empty-state" role="status">
+      <mat-card-header>
+        <mat-card-title>Select a project</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <p>Open a project to view and manage its tasks.</p>
+      </mat-card-content>
+      <mat-card-actions>
+        <a mat-flat-button routerLink="/projects">Browse projects</a>
+      </mat-card-actions>
+    </mat-card>
+  } @else {
+    <a class="back-link" [routerLink]="['/projects', projectId]">Back to project</a>
+
+    @if (contextLoading()) {
+      <div class="loading-state" role="status" aria-live="polite">
+        <span>Loading project tasks...</span>
+        <mat-progress-bar mode="indeterminate" aria-label="Loading project tasks" />
+      </div>
+    }
+
+    @if (errorMessage(); as error) {
+      <mat-card class="error-state" role="alert">
+        <mat-card-header>
+          <mat-card-title>Tasks unavailable</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <p>{{ error }}</p>
+          @for (apiError of apiErrors(); track apiError.code + (apiError.field ?? '')) {
+            <p class="api-error">{{ apiError.message }}</p>
+          }
+        </mat-card-content>
+        <mat-card-actions>
+          <button mat-flat-button type="button" (click)="loadContext()">Try again</button>
+        </mat-card-actions>
+      </mat-card>
+    }
+
+    @if (project(); as currentProject) {
+      <header class="page-header">
+        <div>
+          <p class="eyebrow">Task management</p>
+          <h1 id="tasks-title">{{ currentProject.name }} tasks</h1>
+          <p class="page-description">Search, filter and manage tasks within this project.</p>
+        </div>
+        @if (canManageTasks()) {
+          <button
+            mat-flat-button
+            type="button"
+            [disabled]="actionLoading() !== null"
+            (click)="openCreateDialog()"
+          >
+            Create task
+          </button>
+        }
+      </header>
+
+      @if (memberErrorMessage(); as memberError) {
+        <mat-card class="warning-state" role="status">
+          <mat-card-content>
+            <p>{{ memberError }}</p>
+            <p class="muted">Assignee names and assignment controls may be unavailable.</p>
+          </mat-card-content>
+        </mat-card>
+      }
+
+      @if (actionErrorMessage(); as actionError) {
+        <mat-card class="error-state" role="alert">
+          <mat-card-content>
+            <p>{{ actionError }}</p>
+          </mat-card-content>
+        </mat-card>
+      }
+
+      <mat-card class="filters-card">
+        <mat-card-header>
+          <mat-card-title>Find tasks</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <form class="filters-form" [formGroup]="filtersForm" (ngSubmit)="applyFilters()">
+            <mat-form-field appearance="outline" class="keyword-field">
+              <mat-label>Keyword</mat-label>
+              <input
+                matInput
+                formControlName="keyword"
+                placeholder="Search title or description"
+                aria-label="Search task title or description"
+              />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Status</mat-label>
+              <mat-select formControlName="status">
+                <mat-option [value]="null">All statuses</mat-option>
+                @for (status of statuses; track status.key) {
+                  <mat-option [value]="status.key">{{ status.label }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Priority</mat-label>
+              <mat-select formControlName="priority">
+                <mat-option [value]="null">All priorities</mat-option>
+                @for (priority of priorities; track priority.key) {
+                  <mat-option [value]="priority.key">{{ priority.label }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Assignee</mat-label>
+              <mat-select formControlName="assignedUserId">
+                <mat-option value="">All assignees</mat-option>
+                @for (member of members(); track member.userId) {
+                  <mat-option [value]="member.userId">
+                    {{ member.firstName }} {{ member.lastName }}
+                  </mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Due from</mat-label>
+              <input matInput type="date" formControlName="dueDateFrom" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Due to</mat-label>
+              <input matInput type="date" formControlName="dueDateTo" />
+            </mat-form-field>
+
+            <div class="filter-actions">
+              <button mat-flat-button type="submit" [disabled]="tasksLoading()">
+                Apply filters
+              </button>
+              <button mat-stroked-button type="button" (click)="clearFilters()">Clear</button>
+            </div>
+          </form>
+        </mat-card-content>
+      </mat-card>
+
+      @if (tasksLoading()) {
+        <div class="loading-state" role="status" aria-live="polite">
+          <span>Loading tasks...</span>
+          <mat-progress-bar mode="indeterminate" aria-label="Loading tasks" />
+        </div>
+      }
+
+      @if (!tasksLoading() && hasLoaded() && tasks()?.items?.length === 0 && !errorMessage()) {
+        <mat-card class="empty-state" role="status">
+          <mat-card-header>
+            <mat-card-title>No tasks found</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <p>Try changing the filters or create the first task for this project.</p>
+          </mat-card-content>
+        </mat-card>
+      }
+
+      @if (tasks(); as taskPage) {
+        @if (taskPage.items.length > 0) {
+          <mat-card class="tasks-card">
+            <div class="table-wrapper">
+              <table
+                mat-table
+                matSort
+                [dataSource]="taskPage.items"
+                [trackBy]="trackTask"
+                (matSortChange)="onSort($event)"
+                aria-label="Project tasks"
+              >
+                <ng-container matColumnDef="title">
+                  <th mat-header-cell *matHeaderCellDef mat-sort-header="title">Title</th>
+                  <td mat-cell *matCellDef="let task">
+                    <strong>{{ task.title }}</strong>
+                  </td>
+                </ng-container>
+
+                <ng-container matColumnDef="description">
+                  <th mat-header-cell *matHeaderCellDef>Description</th>
+                  <td mat-cell *matCellDef="let task" class="description-cell">
+                    {{ descriptionPreview(task.description) }}
+                  </td>
+                </ng-container>
+
+                <ng-container matColumnDef="status">
+                  <th mat-header-cell *matHeaderCellDef mat-sort-header="status">Status</th>
+                  <td mat-cell *matCellDef="let task">
+                    @if (canUpdateStatus(task)) {
+                      <mat-select
+                        class="inline-select"
+                        [value]="task.status"
+                        [disabled]="actionLoading() === task.id"
+                        [attr.aria-label]="'Update status for ' + task.title"
+                        (selectionChange)="onStatusChange(task, $event.value)"
+                      >
+                        @for (status of statuses; track status.key) {
+                          <mat-option [value]="status.key">{{ status.label }}</mat-option>
+                        }
+                      </mat-select>
+                    } @else {
+                      <span>{{ statusLabel(task.status) }}</span>
+                    }
+                  </td>
+                </ng-container>
+
+                <ng-container matColumnDef="priority">
+                  <th mat-header-cell *matHeaderCellDef mat-sort-header="priority">Priority</th>
+                  <td mat-cell *matCellDef="let task">
+                    @if (canManageTasks()) {
+                      <mat-select
+                        class="inline-select"
+                        [value]="task.priority"
+                        [disabled]="actionLoading() === task.id"
+                        [attr.aria-label]="'Update priority for ' + task.title"
+                        (selectionChange)="onPriorityChange(task, $event.value)"
+                      >
+                        @for (priority of priorities; track priority.key) {
+                          <mat-option [value]="priority.key">{{ priority.label }}</mat-option>
+                        }
+                      </mat-select>
+                    } @else {
+                      <span>{{ priorityLabel(task.priority) }}</span>
+                    }
+                  </td>
+                </ng-container>
+
+                <ng-container matColumnDef="assignedTo">
+                  <th mat-header-cell *matHeaderCellDef>Assigned user</th>
+                  <td mat-cell *matCellDef="let task">
+                    <span>{{ memberName(task.assignedToUserId) }}</span>
+                    @if (canManageTasks()) {
+                      <button
+                        mat-button
+                        type="button"
+                        [disabled]="actionLoading() === task.id || members().length === 0"
+                        (click)="openAssignmentDialog(task)"
+                        [attr.aria-label]="'Assign ' + task.title"
+                      >
+                        {{ task.assignedToUserId ? 'Reassign' : 'Assign' }}
+                      </button>
+                    }
+                  </td>
+                </ng-container>
+
+                <ng-container matColumnDef="dueDate">
+                  <th mat-header-cell *matHeaderCellDef mat-sort-header="dueDate">Due date</th>
+                  <td mat-cell *matCellDef="let task">
+                    {{ task.dueDate ? (task.dueDate | date: 'mediumDate') : 'No due date' }}
+                  </td>
+                </ng-container>
+
+                <ng-container matColumnDef="createdAtUtc">
+                  <th mat-header-cell *matHeaderCellDef mat-sort-header="createdAt">Created</th>
+                  <td mat-cell *matCellDef="let task">
+                    {{ task.createdAtUtc | date: 'mediumDate' }}
+                  </td>
+                </ng-container>
+
+                <ng-container matColumnDef="actions">
+                  <th mat-header-cell *matHeaderCellDef>Actions</th>
+                  <td mat-cell *matCellDef="let task">
+                    @if (canManageTasks()) {
+                      <div class="row-actions">
+                        <button
+                          mat-button
+                          type="button"
+                          [disabled]="actionLoading() === task.id"
+                          (click)="openEditDialog(task)"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          mat-button
+                          color="warn"
+                          type="button"
+                          [disabled]="actionLoading() === task.id"
+                          (click)="confirmDelete(task)"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    } @else {
+                      <span class="muted">View only</span>
+                    }
+                  </td>
+                </ng-container>
+
+                <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+              </table>
+            </div>
+
+            <mat-paginator
+              [length]="taskPage.totalCount"
+              [pageIndex]="taskPage.pageNumber - 1"
+              [pageSize]="taskPage.pageSize"
+              [pageSizeOptions]="[10, 25, 50, 100]"
+              (page)="onPageChange($event)"
+              aria-label="Task pages"
+            />
+          </mat-card>
+        }
+      }
+    }
+  }
+</main>

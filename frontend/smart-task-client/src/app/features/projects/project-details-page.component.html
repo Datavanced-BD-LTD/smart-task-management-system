@@ -46,14 +46,17 @@
         </p>
       </div>
 
-      @if (canManage()) {
-        <div class="header-actions">
+      <div class="header-actions">
+        <a mat-stroked-button [routerLink]="['/projects', currentProject.projectId, 'tasks']">
+          View tasks
+        </a>
+        @if (canManage()) {
           <button mat-stroked-button type="button" (click)="openEditDialog()">Edit project</button>
           <button mat-flat-button color="warn" type="button" (click)="confirmDelete()">
             Delete project
           </button>
-        </div>
-      }
+        }
+      </div>
     </header>
 
     <section class="metadata-grid" aria-label="Project metadata">
