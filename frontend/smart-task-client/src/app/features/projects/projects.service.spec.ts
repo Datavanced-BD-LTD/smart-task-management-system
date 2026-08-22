@@ -44,6 +44,25 @@ describe('ProjectsService', () => {
     request.flush(successResponse(null));
   });
 
+  it('omits the search parameter when no search text is provided', () => {
+    service
+      .list({
+        search: undefined,
+        sortBy: 'createdAt',
+        sortDirection: 'desc',
+        page: 1,
+        pageSize: 20,
+      })
+      .subscribe();
+
+    const request = httpTesting.expectOne(
+      (candidate) => candidate.url === `${environment.apiBaseUrl}/v1/projects`,
+    );
+
+    expect(request.request.params.has('search')).toBe(false);
+    request.flush(successResponse(null));
+  });
+
   it('uses the project membership endpoints for list, add and remove', () => {
     const projectId = 'project-1';
     const userId = 'user-1';

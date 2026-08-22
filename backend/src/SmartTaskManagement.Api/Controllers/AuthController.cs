@@ -132,30 +132,25 @@ public sealed class AuthController(
 
     private void SetRefreshTokenCookie(string refreshToken, DateTime expiresAtUtc)
     {
-        Response.Cookies.Append(
-            RefreshTokenCookieName,
-            refreshToken,
-            new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = Request.IsHttps,
-                SameSite = SameSiteMode.Strict,
-                Path = "/api/v1/auth",
-                Expires = expiresAtUtc
-            });
+        var options = CreateRefreshTokenCookieOptions();
+        options.Expires = expiresAtUtc;
+        Response.Cookies.Append(RefreshTokenCookieName, refreshToken, options);
     }
 
     private void DeleteRefreshTokenCookie()
     {
-        Response.Cookies.Delete(
-            RefreshTokenCookieName,
-            new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = Request.IsHttps,
-                SameSite = SameSiteMode.Strict,
-                Path = "/api/v1/auth"
-            });
+        Response.Cookies.Delete(RefreshTokenCookieName, CreateRefreshTokenCookieOptions());
+    }
+
+    private CookieOptions CreateRefreshTokenCookieOptions()
+    {
+        return new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = Request.IsHttps,
+            SameSite = Request.IsHttps ? SameSiteMode.None : SameSiteMode.Lax,
+            Path = "/api/v1/auth"
+        };
     }
 
     private static AuthenticationResponse ToAuthenticationResponse(AuthenticationResult result)

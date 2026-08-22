@@ -43,7 +43,13 @@
             [attr.aria-label]="passwordVisible() ? 'Hide password' : 'Show password'"
             (click)="togglePasswordVisibility()"
           >
-            {{ passwordVisible() ? 'Hide' : 'Show' }}
+            <svg class="password-toggle-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+              @if (passwordVisible()) {
+                <path d="M2.1 2.1 0.69 3.51l4.2 4.2C3.06 9.05 1.69 10.85 1 12c2.27 4.39 6.5 7.5 11 7.5 1.26 0 2.47-.22 3.6-.62l4.89 4.89 1.41-1.41L2.1 2.1ZM12 17.5c-2.42 0-4.72-1.45-6.23-3.56l1.72 1.72A5 5 0 0 0 14.34 17l1.36 1.36c-1.1.47-2.35.74-3.7.74Zm0-3.5a2 2 0 0 1-2-2c0-.32.08-.62.21-.9l2.69 2.69c-.28.13-.58.21-.9.21ZM12 4.5c4.5 0 8.73 3.11 11 7.5-.63 1.22-1.57 2.53-2.75 3.69l-1.42-1.42c.57-.72 1.05-1.48 1.4-2.27C18.73 8.39 14.5 5.5 12 5.5c-1.07 0-2.15.25-3.16.68L7.3 4.64A11.8 11.8 0 0 1 12 4.5Z" />
+              } @else {
+                <path d="M12 4.5C7.5 4.5 3.27 7.61 1 12c2.27 4.39 6.5 7.5 11 7.5s8.73-3.11 11-7.5c-2.27-4.39-6.5-7.5-11-7.5Zm0 12.5a5 5 0 1 1 0-10 5 5 0 0 1 0 10Zm0-2a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+              }
+            </svg>
           </button>
           @if (getFieldError('password')) {
             <mat-error>{{ getFieldError('password') }}</mat-error>

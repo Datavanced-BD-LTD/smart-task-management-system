@@ -30,6 +30,13 @@ mat-card-actions {
   padding: 0 1rem 1rem;
 }
 
+.password-toggle-icon {
+  display: block;
+  width: 1.5rem;
+  height: 1.5rem;
+  fill: currentColor;
+}
+
 .error-message,
 .success-message {
   display: grid;
