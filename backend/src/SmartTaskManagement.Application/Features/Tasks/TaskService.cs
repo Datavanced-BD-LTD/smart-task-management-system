@@ -101,13 +101,7 @@ public sealed class TaskService(
             ?? throw new TaskNotFoundException(taskId);
         var project = await GetProjectAsync(taskItem.ProjectId, cancellationToken);
 
-        await EnsureCanUpdateAsync(
-            taskItem,
-            project,
-            request,
-            currentUserId,
-            roles,
-            cancellationToken);
+        EnsureCanUpdate(project, currentUserId, roles);
 
         var assignedToUserId = request.AssignedToUserId ?? taskItem.AssignedToUserId;
         await ValidateAssigneeAsync(project.ProjectId, assignedToUserId, cancellationToken);
@@ -322,13 +316,10 @@ public sealed class TaskService(
             "Team Members can only update the status of tasks assigned to them.");
     }
 
-    private async Task EnsureCanUpdateAsync(
-        TaskItem taskItem,
+    private static void EnsureCanUpdate(
         Project project,
-        UpdateTaskRequest request,
         Guid currentUserId,
-        IReadOnlyCollection<string> roles,
-        CancellationToken cancellationToken)
+        IReadOnlyCollection<string> roles)
     {
         if (IsAdmin(roles))
         {
@@ -346,28 +337,14 @@ public sealed class TaskService(
                 "Project Managers can only update tasks in projects they manage.");
         }
 
-        if (!IsTeamMember(roles) ||
-            !await taskStore.IsProjectMemberAsync(
-                project.ProjectId,
-                currentUserId,
-                cancellationToken))
+        if (IsTeamMember(roles))
         {
             throw new ForbiddenException(
-                "Team Members can only update tasks in projects they belong to.");
+                "Team Members cannot use the full task update endpoint. Update task status through the status endpoint.");
         }
 
-        if (taskItem.AssignedToUserId != currentUserId)
-        {
-            throw new ForbiddenException(
-                "Team Members can only update tasks assigned to them.");
-        }
-
-        if (request.AssignedToUserId.HasValue &&
-            request.AssignedToUserId.Value != taskItem.AssignedToUserId)
-        {
-            throw new ForbiddenException(
-                "Team Members cannot change task ownership.");
-        }
+        throw new ForbiddenException(
+            "Only Admins and the owning Project Manager can use the full task update endpoint.");
     }
 
     private async Task ValidateAssigneeAsync(

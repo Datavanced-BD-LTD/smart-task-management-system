@@ -56,6 +56,198 @@ public sealed class TaskServiceTests
     }
 
     [Fact]
+    public async Task Admin_can_fully_update_a_task()
+    {
+        var projectManagerId = Guid.NewGuid();
+        var adminId = Guid.NewGuid();
+        var assigneeId = Guid.NewGuid();
+        var project = CreateProject(projectManagerId);
+        var store = CreateStore(project, assigneeId, project.ProjectId);
+        var service = CreateService(store);
+        var task = await service.CreateAsync(
+            project.ProjectId,
+            CreateRequest(),
+            projectManagerId,
+            [RoleNames.ProjectManager],
+            CancellationToken.None);
+
+        var result = await service.UpdateAsync(
+            task.Id,
+            new UpdateTaskRequest(
+                "Updated title",
+                "Updated description",
+                assigneeId,
+                TaskStatusEnum.InProgress,
+                TaskPriority.High,
+                new DateTime(2026, 2, 1, 12, 0, 0, DateTimeKind.Utc)),
+            adminId,
+            [RoleNames.Admin],
+            CancellationToken.None);
+
+        Assert.Equal("Updated title", result.Title);
+        Assert.Equal("Updated description", result.Description);
+        Assert.Equal(assigneeId, result.AssignedToUserId);
+        Assert.Equal(TaskStatusEnum.InProgress, result.Status);
+        Assert.Equal(TaskPriority.High, result.Priority);
+        Assert.Equal(new DateTime(2026, 2, 1, 12, 0, 0, DateTimeKind.Utc), result.DueDate);
+    }
+
+    [Fact]
+    public async Task Authorized_project_manager_can_fully_update_a_task()
+    {
+        var projectManagerId = Guid.NewGuid();
+        var assigneeId = Guid.NewGuid();
+        var project = CreateProject(projectManagerId);
+        var store = CreateStore(project, assigneeId, project.ProjectId);
+        var service = CreateService(store);
+        var task = await service.CreateAsync(
+            project.ProjectId,
+            CreateRequest(),
+            projectManagerId,
+            [RoleNames.ProjectManager],
+            CancellationToken.None);
+
+        var result = await service.UpdateAsync(
+            task.Id,
+            new UpdateTaskRequest(
+                "Manager updated title",
+                "Manager updated description",
+                assigneeId,
+                TaskStatusEnum.InProgress,
+                TaskPriority.Critical,
+                new DateTime(2026, 2, 2, 12, 0, 0, DateTimeKind.Utc)),
+            projectManagerId,
+            [RoleNames.ProjectManager],
+            CancellationToken.None);
+
+        Assert.Equal("Manager updated title", result.Title);
+        Assert.Equal("Manager updated description", result.Description);
+        Assert.Equal(assigneeId, result.AssignedToUserId);
+        Assert.Equal(TaskStatusEnum.InProgress, result.Status);
+        Assert.Equal(TaskPriority.Critical, result.Priority);
+        Assert.Equal(new DateTime(2026, 2, 2, 12, 0, 0, DateTimeKind.Utc), result.DueDate);
+    }
+
+    [Fact]
+    public async Task Assigned_team_member_cannot_use_full_task_update_endpoint()
+    {
+        var projectManagerId = Guid.NewGuid();
+        var teamMemberId = Guid.NewGuid();
+        var project = CreateProject(projectManagerId);
+        var store = CreateStore(project, teamMemberId, project.ProjectId);
+        var service = CreateService(store);
+        var task = await service.CreateAsync(
+            project.ProjectId,
+            CreateRequest(teamMemberId),
+            projectManagerId,
+            [RoleNames.ProjectManager],
+            CancellationToken.None);
+
+        var exception = await Assert.ThrowsAsync<ForbiddenException>(() => service.UpdateAsync(
+            task.Id,
+            new UpdateTaskRequest(
+                "Changed title",
+                "Changed description",
+                teamMemberId,
+                TaskStatusEnum.InProgress,
+                TaskPriority.High,
+                DateTime.UtcNow.AddDays(10)),
+            teamMemberId,
+            [RoleNames.TeamMember],
+            CancellationToken.None));
+
+        Assert.Contains("full task update endpoint", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Team_member_cannot_change_priority_through_full_task_update()
+    {
+        var (service, task, teamMemberId) = await CreateAssignedTeamMemberTask();
+
+        await Assert.ThrowsAsync<ForbiddenException>(() => service.UpdateAsync(
+            task.Id,
+            new UpdateTaskRequest(
+                task.Title,
+                task.Description,
+                task.AssignedToUserId,
+                task.Status,
+                TaskPriority.Critical,
+                task.DueDate),
+            teamMemberId,
+            [RoleNames.TeamMember],
+            CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Team_member_cannot_change_due_date_through_full_task_update()
+    {
+        var (service, task, teamMemberId) = await CreateAssignedTeamMemberTask();
+
+        await Assert.ThrowsAsync<ForbiddenException>(() => service.UpdateAsync(
+            task.Id,
+            new UpdateTaskRequest(
+                task.Title,
+                task.Description,
+                task.AssignedToUserId,
+                task.Status,
+                task.Priority,
+                DateTime.UtcNow.AddDays(30)),
+            teamMemberId,
+            [RoleNames.TeamMember],
+            CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Team_member_cannot_change_title_or_description_through_full_task_update()
+    {
+        var (service, task, teamMemberId) = await CreateAssignedTeamMemberTask();
+
+        await Assert.ThrowsAsync<ForbiddenException>(() => service.UpdateAsync(
+            task.Id,
+            new UpdateTaskRequest(
+                "Changed title",
+                "Changed description",
+                task.AssignedToUserId,
+                task.Status,
+                task.Priority,
+                task.DueDate),
+            teamMemberId,
+            [RoleNames.TeamMember],
+            CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Unauthorized_project_manager_receives_forbidden_for_full_task_update()
+    {
+        var projectManagerId = Guid.NewGuid();
+        var unauthorizedManagerId = Guid.NewGuid();
+        var project = CreateProject(projectManagerId);
+        var store = CreateStore(project);
+        var service = CreateService(store);
+        var task = await service.CreateAsync(
+            project.ProjectId,
+            CreateRequest(),
+            projectManagerId,
+            [RoleNames.ProjectManager],
+            CancellationToken.None);
+
+        var exception = await Assert.ThrowsAsync<ForbiddenException>(() => service.UpdateAsync(
+            task.Id,
+            new UpdateTaskRequest(
+                "Changed title",
+                task.Description,
+                task.AssignedToUserId,
+                task.Status,
+                task.Priority,
+                task.DueDate),
+            unauthorizedManagerId,
+            [RoleNames.ProjectManager],
+            CancellationToken.None));
+
+        Assert.Contains("projects they manage", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Unauthorized_user_cannot_access_another_projects_task()
     {
         var projectManagerId = Guid.NewGuid();
@@ -712,6 +904,24 @@ public sealed class TaskServiceTests
             status,
             priority,
             dueDate ?? DateTime.UtcNow.AddDays(1));
+    }
+
+    private static async Task<(TaskService Service, TaskResponse Task, Guid TeamMemberId)>
+        CreateAssignedTeamMemberTask()
+    {
+        var projectManagerId = Guid.NewGuid();
+        var teamMemberId = Guid.NewGuid();
+        var project = CreateProject(projectManagerId);
+        var store = CreateStore(project, teamMemberId, project.ProjectId);
+        var service = CreateService(store);
+        var task = await service.CreateAsync(
+                project.ProjectId,
+                CreateRequest(teamMemberId),
+                projectManagerId,
+                [RoleNames.ProjectManager],
+                CancellationToken.None);
+
+        return (service, task, teamMemberId);
     }
 
     private static FakeTaskStore CreateStore(
