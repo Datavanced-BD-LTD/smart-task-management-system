@@ -1,0 +1,27 @@
+@use '@angular/material' as mat;
+
+html {
+  color-scheme: light;
+  @include mat.theme((
+    color: mat.$azure-palette,
+    typography: Roboto,
+    density: 0,
+  ));
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100dvh;
+  background: #f5f7fb;
+  color: #1b1b1f;
+  font-family: Roboto, 'Segoe UI', sans-serif;
+}
+
+a {
+  color: inherit;
+}

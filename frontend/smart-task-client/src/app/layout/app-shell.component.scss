@@ -1,0 +1,76 @@
+:host {
+  display: block;
+}
+
+.shell-container {
+  min-height: 100dvh;
+}
+
+mat-sidenav {
+  width: 15rem;
+  border-right: 1px solid #e2e5ec;
+}
+
+.brand {
+  padding: 1.5rem 1.25rem;
+  color: #1a237e;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+nav {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0 0.75rem;
+}
+
+.nav-link {
+  border-radius: 0.5rem;
+  padding: 0.8rem 0.75rem;
+  text-decoration: none;
+}
+
+.nav-link:hover,
+.nav-link.active {
+  background: #e8eaf6;
+  color: #1a237e;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  gap: 0.75rem;
+  border-bottom: 1px solid #e2e5ec;
+  background: #ffffff;
+}
+
+.toolbar-title {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.toolbar-spacer {
+  flex: 1;
+}
+
+.user-name {
+  color: #5f6368;
+  font-size: 0.9rem;
+}
+
+.content {
+  width: min(100%, 90rem);
+  margin: 0 auto;
+  padding: clamp(1rem, 3vw, 2rem);
+}
+
+@media (max-width: 700px) {
+  mat-sidenav {
+    width: 13rem;
+  }
+
+  .user-name {
+    display: none;
+  }
+}
