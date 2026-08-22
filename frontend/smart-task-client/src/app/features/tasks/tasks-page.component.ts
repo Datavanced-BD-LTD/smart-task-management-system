@@ -1,5 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { MatNativeDateModule, provideNativeDateAdapter } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -52,8 +54,10 @@ type TaskSortDirection = 'asc' | 'desc';
     DatePipe,
     MatButtonModule,
     MatCardModule,
+    MatDatepickerModule,
     MatFormFieldModule,
     MatInputModule,
+    MatNativeDateModule,
     MatPaginatorModule,
     MatProgressBarModule,
     MatSelectModule,
@@ -62,6 +66,7 @@ type TaskSortDirection = 'asc' | 'desc';
     ReactiveFormsModule,
     RouterLink,
   ],
+  providers: [provideNativeDateAdapter()],
   selector: 'app-tasks-page',
   styleUrl: './tasks-page.component.scss',
   templateUrl: './tasks-page.component.html',
@@ -108,8 +113,8 @@ export class TasksPageComponent implements OnInit {
     status: this.formBuilder.control<TaskStatus | null>(null),
     priority: this.formBuilder.control<TaskPriority | null>(null),
     assignedUserId: this.formBuilder.nonNullable.control(''),
-    dueDateFrom: this.formBuilder.nonNullable.control(''),
-    dueDateTo: this.formBuilder.nonNullable.control(''),
+    dueDateFrom: this.formBuilder.control<Date | null>(null),
+    dueDateTo: this.formBuilder.control<Date | null>(null),
   });
 
   readonly canManageTasks = computed(() => {
@@ -214,8 +219,8 @@ export class TasksPageComponent implements OnInit {
       status: null,
       priority: null,
       assignedUserId: '',
-      dueDateFrom: '',
-      dueDateTo: '',
+      dueDateFrom: null,
+      dueDateTo: null,
     });
     this.applyFilters();
   }
@@ -251,7 +256,11 @@ export class TasksPageComponent implements OnInit {
 
     const data: TaskFormDialogData = { members: this.members() };
     this.dialog
-      .open(TaskFormDialogComponent, { data, width: 'min(48rem, 94vw)' })
+      .open(TaskFormDialogComponent, {
+        data,
+        width: 'min(42rem, calc(100vw - 2rem))',
+        maxWidth: 'calc(100vw - 2rem)',
+      })
       .afterClosed()
       .pipe(
         filter((request): request is CreateTaskRequest => Boolean(request)),
@@ -272,7 +281,11 @@ export class TasksPageComponent implements OnInit {
 
     const data: TaskFormDialogData = { task, members: this.members() };
     this.dialog
-      .open(TaskFormDialogComponent, { data, width: 'min(48rem, 94vw)' })
+      .open(TaskFormDialogComponent, {
+        data,
+        width: 'min(42rem, calc(100vw - 2rem))',
+        maxWidth: 'calc(100vw - 2rem)',
+      })
       .afterClosed()
       .pipe(
         filter((request): request is CreateTaskRequest => Boolean(request)),
@@ -414,13 +427,25 @@ export class TasksPageComponent implements OnInit {
       status: value.status ?? undefined,
       priority: value.priority ?? undefined,
       assignedUserId: value.assignedUserId || undefined,
-      dueDateFrom: value.dueDateFrom || undefined,
-      dueDateTo: value.dueDateTo || undefined,
+      dueDateFrom: this.toApiDate(value.dueDateFrom),
+      dueDateTo: this.toApiDate(value.dueDateTo),
       pageNumber: this.pageIndex() + 1,
       pageSize: this.pageSize(),
       sortColumn: this.sortColumn(),
       sortDirection: this.sortDirection(),
     };
+  }
+
+  private toApiDate(value: Date | null): string | undefined {
+    if (!value || Number.isNaN(value.getTime())) {
+      return undefined;
+    }
+
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
   }
 
   private runAction<T>(actionId: string, request: Observable<T>): Observable<T> {

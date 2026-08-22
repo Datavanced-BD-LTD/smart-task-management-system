@@ -124,12 +124,28 @@
 
             <mat-form-field appearance="outline">
               <mat-label>Due from</mat-label>
-              <input matInput type="date" formControlName="dueDateFrom" />
+              <input
+                matInput
+                [matDatepicker]="dueDateFromPicker"
+                formControlName="dueDateFrom"
+                (click)="dueDateFromPicker.open()"
+                aria-label="Due date from"
+              />
+              <mat-datepicker-toggle matIconSuffix [for]="dueDateFromPicker"></mat-datepicker-toggle>
+              <mat-datepicker #dueDateFromPicker></mat-datepicker>
             </mat-form-field>
 
             <mat-form-field appearance="outline">
               <mat-label>Due to</mat-label>
-              <input matInput type="date" formControlName="dueDateTo" />
+              <input
+                matInput
+                [matDatepicker]="dueDateToPicker"
+                formControlName="dueDateTo"
+                (click)="dueDateToPicker.open()"
+                aria-label="Due date to"
+              />
+              <mat-datepicker-toggle matIconSuffix [for]="dueDateToPicker"></mat-datepicker-toggle>
+              <mat-datepicker #dueDateToPicker></mat-datepicker>
             </mat-form-field>
 
             <div class="filter-actions">

@@ -67,7 +67,7 @@ describe('TaskFormDialogComponent', () => {
       assignedToUserId: 'member-1',
       status: 1,
       priority: 2,
-      dueDate: '2026-08-30',
+      dueDate: new Date(2026, 7, 30),
     });
     expect(existingComponent.members).toEqual(members);
 
@@ -81,6 +81,19 @@ describe('TaskFormDialogComponent', () => {
       priority: 2,
       dueDate: '2026-08-30',
     });
+  });
+
+  it('normalizes a selected due date to the API date format', () => {
+    component.form.patchValue({
+      title: 'Task with due date',
+      dueDate: new Date(2026, 7, 30),
+    });
+
+    component.submit();
+
+    expect(close).toHaveBeenCalledWith(
+      expect.objectContaining({ dueDate: '2026-08-30' }),
+    );
   });
 });
 

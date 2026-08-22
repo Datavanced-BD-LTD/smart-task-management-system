@@ -118,8 +118,8 @@ describe('TasksPageComponent', () => {
       status: 1,
       priority: 2,
       assignedUserId: 'member-1',
-      dueDateFrom: '2026-08-01',
-      dueDateTo: '2026-08-31',
+      dueDateFrom: new Date(2026, 7, 1),
+      dueDateTo: new Date(2026, 7, 31),
     });
     component.onSort({ active: 'dueDate', direction: 'asc' });
     component.onPageChange({ pageIndex: 1, pageSize: 25, length: 100 });
