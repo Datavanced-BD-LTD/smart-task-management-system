@@ -1,0 +1,168 @@
+<main class="dashboard-page" aria-labelledby="dashboard-title">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">Overview</p>
+      <h1 id="dashboard-title">Dashboard</h1>
+      <p class="page-description">Track your projects, tasks and upcoming work at a glance.</p>
+    </div>
+
+    <button
+      mat-stroked-button
+      type="button"
+      aria-label="Refresh dashboard"
+      [disabled]="loading()"
+      (click)="refreshDashboard()"
+    >
+      Refresh
+    </button>
+  </header>
+
+  @if (loading()) {
+    <div class="loading-state" role="status" aria-live="polite">
+      <span>Loading dashboard...</span>
+      <mat-progress-bar mode="indeterminate" aria-label="Loading dashboard" />
+    </div>
+  }
+
+  @if (errorMessage(); as error) {
+    <mat-card class="error-state" role="alert">
+      <mat-card-header>
+        <mat-card-title>Dashboard unavailable</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <p>{{ error }}</p>
+        @for (apiError of apiErrors(); track apiError.code + (apiError.field ?? '')) {
+          <p class="api-error">{{ apiError.message }}</p>
+        }
+      </mat-card-content>
+      <mat-card-actions>
+        <button mat-flat-button type="button" (click)="refreshDashboard()">Try again</button>
+      </mat-card-actions>
+    </mat-card>
+  }
+
+  @if (!loading() && hasLoaded() && !summary() && !errorMessage()) {
+    <mat-card class="empty-state" role="status">
+      <mat-card-header>
+        <mat-card-title>No dashboard data yet</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <p>Your dashboard does not have any data to display.</p>
+      </mat-card-content>
+    </mat-card>
+  }
+
+  @if (summary(); as data) {
+    @if (data.totalProjects === 0 && data.totalTasks === 0) {
+      <mat-card class="empty-state" role="status">
+        <mat-card-header>
+          <mat-card-title>Your dashboard is empty</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <p>Create a project and add tasks to start seeing progress here.</p>
+        </mat-card-content>
+      </mat-card>
+    }
+
+    <section class="summary-grid" aria-label="Dashboard summary">
+      <mat-card class="summary-card projects-card">
+        <mat-card-content>
+          <span class="card-label">Total projects</span>
+          <strong class="card-value">{{ data.totalProjects }}</strong>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="summary-card tasks-card">
+        <mat-card-content>
+          <span class="card-label">Total tasks</span>
+          <strong class="card-value">{{ data.totalTasks }}</strong>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="summary-card completed-card">
+        <mat-card-content>
+          <span class="card-label">Completed tasks</span>
+          <strong class="card-value">{{ data.completedTaskCount }}</strong>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="summary-card pending-card">
+        <mat-card-content>
+          <span class="card-label">Pending tasks</span>
+          <strong class="card-value">{{ data.pendingTaskCount }}</strong>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="summary-card upcoming-card">
+        <mat-card-content>
+          <span class="card-label">Due in {{ upcomingDays }} days</span>
+          <strong class="card-value">{{ data.upcomingDueTaskCount }}</strong>
+        </mat-card-content>
+      </mat-card>
+    </section>
+
+    <section class="breakdown-grid" aria-label="Task breakdowns">
+      <mat-card class="breakdown-card">
+        <mat-card-header>
+          <mat-card-title>Tasks by status</mat-card-title>
+          <mat-card-subtitle>Current progress across your tasks</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content class="metric-list">
+          @for (row of statusRows(); track row.key) {
+            <div class="metric-row">
+              <div class="metric-heading">
+                <span>{{ row.label }}</span>
+                <strong>{{ row.count }}</strong>
+              </div>
+              <div
+                class="metric-track"
+                role="progressbar"
+                [attr.aria-label]="row.label + ' tasks'"
+                [attr.aria-valuenow]="row.count"
+                aria-valuemin="0"
+                [attr.aria-valuemax]="maxStatusCount()"
+              >
+                <span
+                  class="metric-fill"
+                  [class]="row.className"
+                  [style.width.%]="getBarWidth(row.count, maxStatusCount())"
+                ></span>
+              </div>
+            </div>
+          }
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="breakdown-card">
+        <mat-card-header>
+          <mat-card-title>Tasks by priority</mat-card-title>
+          <mat-card-subtitle>Where attention may be needed next</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content class="metric-list">
+          @for (row of priorityRows(); track row.key) {
+            <div class="metric-row">
+              <div class="metric-heading">
+                <span>{{ row.label }}</span>
+                <strong>{{ row.count }}</strong>
+              </div>
+              <div
+                class="metric-track"
+                role="progressbar"
+                [attr.aria-label]="row.label + ' priority tasks'"
+                [attr.aria-valuenow]="row.count"
+                aria-valuemin="0"
+                [attr.aria-valuemax]="maxPriorityCount()"
+              >
+                <span
+                  class="metric-fill"
+                  [class]="row.className"
+                  [style.width.%]="getBarWidth(row.count, maxPriorityCount())"
+                ></span>
+              </div>
+            </div>
+          }
+        </mat-card-content>
+      </mat-card>
+    </section>
+  }
+</main>
