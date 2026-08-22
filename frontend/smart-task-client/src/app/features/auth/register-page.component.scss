@@ -38,6 +38,13 @@ form {
   line-height: 1.4;
 }
 
+.password-toggle-icon {
+  display: block;
+  width: 1.5rem;
+  height: 1.5rem;
+  fill: currentColor;
+}
+
 mat-card-actions {
   gap: 0.25rem;
   padding: 0 1rem 1rem;

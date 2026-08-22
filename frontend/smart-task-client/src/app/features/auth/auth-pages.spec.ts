@@ -86,5 +86,16 @@ describe('Authentication pages', () => {
       expect(authService.register).not.toHaveBeenCalled();
       expect(component.getFieldError('confirmPassword')).toBe('Passwords do not match.');
     });
+
+    it('toggles both registration password fields', () => {
+      expect(component.passwordVisible()).toBe(false);
+      expect(component.confirmPasswordVisible()).toBe(false);
+
+      component.togglePasswordVisibility();
+      component.toggleConfirmPasswordVisibility();
+
+      expect(component.passwordVisible()).toBe(true);
+      expect(component.confirmPasswordVisible()).toBe(true);
+    });
   });
 });
