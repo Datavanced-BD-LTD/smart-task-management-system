@@ -42,7 +42,7 @@ export interface ProjectMemberDialogData {
   template: `
     <h2 mat-dialog-title>Add project member</h2>
 
-    <form (ngSubmit)="submit()" novalidate>
+    <form (submit)="submit($event)" novalidate>
       <mat-dialog-content class="dialog-content">
         <p>Search active Team Members by name or email.</p>
 
@@ -255,15 +255,40 @@ export class ProjectMemberDialogComponent {
     }
   }
 
-  submit(): void {
-    const member = this.selectedMember();
+  submit(event?: Event): void {
+    event?.preventDefault();
+    const member = this.selectedMember() ?? this.resolveTypedMember();
 
     if (!member) {
       this.selectionError.set('Select a team member from the search results.');
       return;
     }
 
+    this.selectedMember.set(member);
     const request: AddProjectMemberRequest = { userId: member.userId };
     this.dialogRef.close(request);
+  }
+
+  private resolveTypedMember(): AvailableProjectMemberResponse | null {
+    const rawValue = this.searchControl.value;
+    const typedValue = typeof rawValue === 'string'
+      ? rawValue.trim().toLocaleLowerCase()
+      : '';
+
+    if (!typedValue) {
+      return null;
+    }
+
+    const exactMatch = this.availableMembers().find((member) => {
+      const displayName = this.memberDisplayName(member).toLocaleLowerCase();
+      const fullName = `${member.firstName} ${member.lastName}`.trim().toLocaleLowerCase();
+      const email = member.email.trim().toLocaleLowerCase();
+
+      return [displayName, fullName, email].includes(typedValue);
+    });
+
+    return exactMatch ?? (this.availableMembers().length === 1
+      ? this.availableMembers()[0] ?? null
+      : null);
   }
 }

@@ -66,6 +66,25 @@ describe('ProjectMemberDialogComponent', () => {
     expect(component.selectionError()).toContain('Select a team member');
     expect(close).not.toHaveBeenCalled();
   });
+
+  it('submits an exact single search result even when the option was not clicked', () => {
+    component.availableMembers.set([member]);
+    component.searchControl.setValue('Ada Lovelace', { emitEvent: false });
+    component.submit();
+
+    expect(close).toHaveBeenCalledWith({ userId: 'member-1' });
+  });
+
+  it('prevents the browser form submission from reloading the page', () => {
+    component.availableMembers.set([member]);
+    component.searchControl.setValue('Ada Lovelace', { emitEvent: false });
+    const submitEvent = new Event('submit', { cancelable: true });
+
+    component.submit(submitEvent);
+
+    expect(submitEvent.defaultPrevented).toBe(true);
+    expect(close).toHaveBeenCalledWith({ userId: 'member-1' });
+  });
 });
 
 function createMember(): AvailableProjectMemberResponse {
