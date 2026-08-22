@@ -7,10 +7,12 @@ using SmartTaskManagement.Application.Abstractions.Authentication;
 using SmartTaskManagement.Application.Abstractions.Common;
 using SmartTaskManagement.Application.Abstractions.Projects;
 using SmartTaskManagement.Application.Abstractions.Tasks;
+using SmartTaskManagement.Application.Abstractions.Dashboard;
 using SmartTaskManagement.Infrastructure.Authentication;
 using SmartTaskManagement.Infrastructure.Persistence;
 using SmartTaskManagement.Infrastructure.Projects;
 using SmartTaskManagement.Infrastructure.Tasks;
+using SmartTaskManagement.Infrastructure.Dashboard;
 
 namespace SmartTaskManagement.Infrastructure;
 
@@ -46,6 +48,7 @@ public static class DependencyInjection
         services.AddScoped<IAuthStore, EfAuthStore>();
         services.AddScoped<IProjectStore, EfProjectStore>();
         services.AddScoped<ITaskStore, EfTaskStore>();
+        services.AddScoped<IDashboardStore, EfDashboardStore>();
         services.AddScoped<IPasswordService, AspNetPasswordService>();
         services.AddSingleton<ISystemClock, SystemClock>();
         services.AddSingleton<ITokenService, JwtTokenService>();
