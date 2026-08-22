@@ -43,6 +43,16 @@ Versions validated in the current development environment:
 - npm `11.13.0`
 - Local Angular CLI `22.1.5` (no global CLI installation is required)
 
+## Clone the repository
+
+```powershell
+git clone https://github.com/Datavanced-BD-LTD/smart-task-management-system.git
+cd smart-task-management-system
+```
+
+The commands below assume the current directory is the repository root unless a
+section explicitly changes into `backend` or `frontend/smart-task-client`.
+
 ## Backend architecture
 
 The backend is split into four projects:
@@ -110,7 +120,8 @@ SmartTaskManagementSystem/
 │       ├── SmokeTests.cs
 │       ├── TaskServiceTests.cs
 │       ├── DashboardServiceTests.cs
-│       └── AiTaskDescriptionTests.cs
+│       ├── AiTaskDescriptionTests.cs
+│       └── ProjectMembershipServiceTests.cs
 ├── database/
 ├── docs/
 │   ├── Smart Task Management System Assignment.pdf
@@ -139,8 +150,12 @@ SmartTaskManagementSystem/
 ## Prerequisites
 
 - .NET SDK 10.x.
+- EF Core CLI (`dotnet-ef`) compatible with EF Core 10. Verify it with
+  `dotnet ef --version` before running migration commands.
 - SQL Server or SQL Server LocalDB. The checked-in development connection uses `(localdb)\MSSQLLocalDB` and trusted authentication; replace it with a configured SQL Server connection when required.
-- Node.js 20+ and npm. The current environment was verified with Node.js `v26.1.0` and npm `11.13.0`.
+- Node.js and npm compatible with the checked-in Angular CLI. Angular CLI 22.1.5
+  currently requires Node.js `22.22.3+`, `24.15.0+`, or `26.0.0+`. The current
+  environment was verified with Node.js `v26.1.0` and npm `11.13.0`.
 - Ollama only if the AI endpoint is used.
 - PowerShell or an equivalent shell.
 
@@ -148,10 +163,19 @@ The Angular CLI is installed locally through `package.json`. Run commands throug
 
 ## SQL Server setup
 
-1. Start SQL Server or install/start SQL Server LocalDB.
-2. Configure `ConnectionStrings:DefaultConnection` in User Secrets or an environment variable. Do not commit a connection string containing a password.
-3. Ensure the configured account can create/update the application database.
-4. Apply migrations explicitly when the target database is configured:
+1. Start SQL Server or install/start SQL Server LocalDB. LocalDB is available with
+   Visual Studio's Data storage and processing workload or the SQL Server Express
+   LocalDB installer.
+2. For LocalDB, verify and start the default instance if necessary:
+
+```powershell
+sqllocaldb info MSSQLLocalDB
+sqllocaldb start MSSQLLocalDB
+```
+
+3. Configure `ConnectionStrings:DefaultConnection` in User Secrets or an environment variable. Do not commit a connection string containing a password.
+4. Ensure the configured account can create/update the application database.
+5. Apply migrations explicitly when the target database is configured:
 
 ```powershell
 cd backend
@@ -164,19 +188,19 @@ Development startup has `Authentication:ApplyMigrationsOnStartup` enabled and se
 
 ## User Secrets and environment variables
 
-The API project has a User Secrets ID. Initialize it once, then set local-only values. The examples below contain placeholders only; replace them locally without committing the resulting values:
+The API project already has a User Secrets ID, so a fresh clone can set local-only
+values directly. The examples below contain placeholders only; replace them locally
+without committing or sharing the resulting values:
 
 ```powershell
-dotnet user-secrets init --project backend/src/SmartTaskManagement.Api
-
 dotnet user-secrets set --project backend/src/SmartTaskManagement.Api `
-  "ConnectionStrings:DefaultConnection" "<sql-server-connection-string>"
+  "ConnectionStrings:DefaultConnection" "<SQL_SERVER_CONNECTION_STRING>"
 dotnet user-secrets set --project backend/src/SmartTaskManagement.Api `
-  "Authentication:Jwt:SigningKey" "<long-random-signing-key-at-least-32-characters>"
+  "Authentication:Jwt:SigningKey" "<JWT_SIGNING_KEY>"
 dotnet user-secrets set --project backend/src/SmartTaskManagement.Api `
-  "Authentication:SeedAdmin:Email" "<development-admin-email>"
+  "Authentication:SeedAdmin:Email" "<ADMIN_EMAIL>"
 dotnet user-secrets set --project backend/src/SmartTaskManagement.Api `
-  "Authentication:SeedAdmin:Password" "<strong-development-admin-password>"
+  "Authentication:SeedAdmin:Password" "<ADMIN_PASSWORD>"
 ```
 
 For local Ollama, no API key is required:
@@ -191,10 +215,10 @@ dotnet user-secrets set --project backend/src/SmartTaskManagement.Api "Ai:Timeou
 ASP.NET Core environment-variable names use double underscores:
 
 ```powershell
-$env:ConnectionStrings__DefaultConnection = "<sql-server-connection-string>"
-$env:Authentication__Jwt__SigningKey = "<long-random-signing-key>"
-$env:Authentication__SeedAdmin__Email = "<development-admin-email>"
-$env:Authentication__SeedAdmin__Password = "<strong-development-admin-password>"
+$env:ConnectionStrings__DefaultConnection = "<SQL_SERVER_CONNECTION_STRING>"
+$env:Authentication__Jwt__SigningKey = "<JWT_SIGNING_KEY>"
+$env:Authentication__SeedAdmin__Email = "<ADMIN_EMAIL>"
+$env:Authentication__SeedAdmin__Password = "<ADMIN_PASSWORD>"
 $env:Ai__Provider = "Ollama"
 $env:Ai__Endpoint = "http://localhost:11434/api/chat"
 $env:Ai__Model = "gemma3"
@@ -233,7 +257,7 @@ dotnet test SmartTaskManagement.slnx
 dotnet run --project src/SmartTaskManagement.Api/SmartTaskManagement.Api.csproj --launch-profile https
 ```
 
-The HTTPS development API is `https://localhost:7173`; the HTTP profile is `http://localhost:5010`. Swagger is available at `/swagger` when enabled. Liveness and readiness endpoints are `/health/live` and `/health/ready`.
+The HTTPS development API is `https://localhost:7173`; the HTTP profile is `http://localhost:5010`. Swagger is available at `https://localhost:7173/swagger` when enabled. Liveness and readiness endpoints are `/health/live` and `/health/ready`.
 
 ## Run the frontend
 
@@ -250,6 +274,32 @@ npm test -- --watch=false
 npm run build
 ```
 
+## Authentication setup and first sign-in
+
+Self-registration creates a Team Member account. Use Swagger or Postman to call
+`POST /api/v1/auth/register` with placeholder values replaced locally:
+
+```json
+{
+  "email": "<USER_EMAIL>",
+  "password": "<USER_PASSWORD>",
+  "firstName": "<FIRST_NAME>",
+  "lastName": "<LAST_NAME>"
+}
+```
+
+Sign in through the Angular login page at `http://localhost:4200/auth/login`, or
+call `POST /api/v1/auth/login` with `<USER_EMAIL>` and `<USER_PASSWORD>`. The API
+returns an access token and stores the refresh token in an HttpOnly cookie. When
+using an API client, send the access token as `Authorization: Bearer <ACCESS_TOKEN>`.
+
+Admin accounts are not created through public registration. Configure
+`Authentication:SeedAdmin:Email` and `Authentication:SeedAdmin:Password` through
+User Secrets as shown above, then start the development API after applying the
+migrations. The startup seeder creates the Admin only when that email does not
+already exist. Never place admin credentials in `appsettings.json`, README files,
+Postman files, frontend environments, or source control.
+
 ## Production API base URL configuration
 
 No production API host is committed or assumed. Before a production build, edit:
@@ -262,13 +312,20 @@ Set `apiBaseUrl` to the deployed API origin plus `/api`, for example `https://<y
 
 ## Ollama and AI configuration
 
-The implemented provider is Ollama. `OllamaAiTaskDescriptionProvider` sends a JSON `POST` request to `Ai:Endpoint`, by default `http://localhost:11434/api/chat`, with `model`, `messages`, `stream: false`, and a low-temperature generation option. It expects Ollama's `message.content` response field.
+The implemented provider is Ollama. Install it from the official download page:
+<https://ollama.com/download>. `OllamaAiTaskDescriptionProvider` sends a JSON `POST`
+request to `Ai:Endpoint`, by default `http://localhost:11434/api/chat`, with `model`,
+`messages`, `stream: false`, and a low-temperature generation option. It expects
+Ollama's `message.content` response field.
 
-Install Ollama using the official installer for the development operating system, then pull and run the configured model:
+Start Ollama in one terminal, then pull and verify the configured model in another:
+
+```powershell
+ollama serve
+```
 
 ```powershell
 ollama pull gemma3
-ollama serve
 ollama list
 ```
 
@@ -326,6 +383,7 @@ The running server origin is `https://localhost:7173` in the HTTPS development p
 | DELETE | `/api/v1/projects/{projectId}` | Admin or owning Project Manager |
 | GET | `/api/v1/projects/{projectId}` | Scoped by role/membership |
 | GET | `/api/v1/projects` | Scoped list; `search`, `sortBy`, `sortDirection`, `page`, `pageSize` |
+| GET | `/api/v1/projects/{projectId}/available-members` | Admin or owning Project Manager; `keyword`, `pageNumber`, `pageSize` |
 | GET | `/api/v1/projects/{projectId}/members` | Admin, owning Project Manager, or project member |
 | POST | `/api/v1/projects/{projectId}/members` | Admin or owning Project Manager |
 | DELETE | `/api/v1/projects/{projectId}/members/{userId}` | Admin or owning Project Manager |
@@ -356,6 +414,18 @@ Task list query parameters are `keyword`, `status`, `priority`, `assignedUserId`
 | GET | `/` | Anonymous service status |
 
 See `docs/SmartTaskManagement.postman_collection.json` for ready-to-import examples using the exact routes and DTO field names.
+
+## Postman setup
+
+1. Import `docs/SmartTaskManagement.postman_collection.json` into Postman.
+2. Import `docs/SmartTaskManagement.postman_environment.example.json`.
+3. Duplicate the example environment locally and select that local environment.
+4. Replace the example email, password, project ID, task ID, and user ID placeholders
+   only in the local Postman environment.
+5. Run Login first. The collection stores the returned access token in the
+   collection variable and uses Postman's cookie jar for the HttpOnly refresh token.
+6. Do not export or commit an environment containing `<ACCESS_TOKEN>`, passwords,
+   refresh tokens, API keys, or other real credentials.
 
 ## Default roles and permissions
 
@@ -403,6 +473,21 @@ Repository hygiene:
 
 ```powershell
 git diff --check
+```
+
+## Security notes
+
+- Never commit `backend/src/SmartTaskManagement.Api/appsettings.Development.json`.
+- Never commit `local-secrets/` or any file stored under it.
+- Never share passwords, JWT signing keys, access tokens, refresh tokens, API keys,
+  SQL credentials, private keys, or personal tokens publicly.
+- Keep real values in User Secrets, environment variables, or a production secret
+  manager. Checked-in examples must contain placeholders only.
+- Before committing, verify ignored local files with:
+
+```powershell
+git check-ignore backend/src/SmartTaskManagement.Api/appsettings.Development.json
+git check-ignore local-secrets/local-dev-credentials.txt
 ```
 
 ## Known limitations
