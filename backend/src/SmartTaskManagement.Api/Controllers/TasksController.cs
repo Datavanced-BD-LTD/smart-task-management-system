@@ -34,12 +34,14 @@ public sealed class TasksController(
     }
 
     [HttpGet("projects/{projectId:guid}/tasks")]
-    public async Task<ActionResult<ApiResponse<IReadOnlyCollection<TaskResponse>>>> ListByProject(
+    public async Task<ActionResult<ApiResponse<PagedResponse<TaskResponse>>>> ListByProject(
         Guid projectId,
+        [FromQuery] TaskListQuery query,
         CancellationToken cancellationToken)
     {
         var tasks = await taskService.ListByProjectAsync(
             projectId,
+            query,
             GetCurrentUserId(),
             GetCurrentUserRoles(),
             cancellationToken);

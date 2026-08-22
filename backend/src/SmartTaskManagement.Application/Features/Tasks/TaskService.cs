@@ -2,6 +2,7 @@ using FluentValidation;
 using SmartTaskManagement.Application.Abstractions.Common;
 using SmartTaskManagement.Application.Abstractions.Tasks;
 using SmartTaskManagement.Application.Common.Exceptions;
+using SmartTaskManagement.Application.Common.Models;
 using SmartTaskManagement.Domain.Constants;
 using SmartTaskManagement.Domain.Entities;
 
@@ -14,7 +15,8 @@ public sealed class TaskService(
     IValidator<UpdateTaskRequest> updateValidator,
     IValidator<AssignTaskRequest> assignValidator,
     IValidator<UpdateTaskStatusRequest> statusValidator,
-    IValidator<UpdateTaskPriorityRequest> priorityValidator) : ITaskService
+    IValidator<UpdateTaskPriorityRequest> priorityValidator,
+    IValidator<TaskListQuery> listValidator) : ITaskService
 {
     public async Task<TaskResponse> CreateAsync(
         Guid projectId,
@@ -46,18 +48,29 @@ public sealed class TaskService(
         return ToResponse(taskItem);
     }
 
-    public async Task<IReadOnlyCollection<TaskResponse>> ListByProjectAsync(
+    public async Task<PagedResponse<TaskResponse>> ListByProjectAsync(
         Guid projectId,
+        TaskListQuery query,
         Guid currentUserId,
         IReadOnlyCollection<string> roles,
         CancellationToken cancellationToken)
     {
+        await ValidateAsync(listValidator, query, cancellationToken);
+
         var project = await GetProjectAsync(projectId, cancellationToken);
         await EnsureCanViewProjectAsync(project, currentUserId, roles, cancellationToken);
 
-        var taskItems = await taskStore.ListByProjectAsync(projectId, cancellationToken);
+        var pagedTasks = await taskStore.ListByProjectAsync(
+            projectId,
+            query,
+            cancellationToken);
 
-        return taskItems.Select(ToResponse).ToArray();
+        return new PagedResponse<TaskResponse>(
+            pagedTasks.Items,
+            pagedTasks.Page,
+            pagedTasks.PageSize,
+            pagedTasks.TotalCount,
+            pagedTasks.TotalPages);
     }
 
     public async Task<TaskResponse> GetByIdAsync(

@@ -19,6 +19,18 @@ public sealed record UpdateTaskRequest(
     TaskPriority Priority,
     DateTime? DueDate);
 
+public sealed record TaskListQuery(
+    string? Keyword = null,
+    TaskStatusEnum? Status = null,
+    TaskPriority? Priority = null,
+    Guid? AssignedUserId = null,
+    DateTime? DueDateFrom = null,
+    DateTime? DueDateTo = null,
+    int PageNumber = 1,
+    int PageSize = 10,
+    string SortColumn = "createdAt",
+    string SortDirection = "desc");
+
 public sealed record TaskResponse(
     Guid Id,
     Guid ProjectId,

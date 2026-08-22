@@ -1,3 +1,4 @@
+using SmartTaskManagement.Application.Common.Models;
 using SmartTaskManagement.Application.Features.Tasks;
 
 namespace SmartTaskManagement.Application.Abstractions.Tasks;
@@ -11,8 +12,9 @@ public interface ITaskService
         IReadOnlyCollection<string> roles,
         CancellationToken cancellationToken);
 
-    Task<IReadOnlyCollection<TaskResponse>> ListByProjectAsync(
+    Task<PagedResponse<TaskResponse>> ListByProjectAsync(
         Guid projectId,
+        TaskListQuery query,
         Guid currentUserId,
         IReadOnlyCollection<string> roles,
         CancellationToken cancellationToken);

@@ -1,4 +1,6 @@
 using SmartTaskManagement.Domain.Entities;
+using SmartTaskManagement.Application.Common.Models;
+using SmartTaskManagement.Application.Features.Tasks;
 
 namespace SmartTaskManagement.Application.Abstractions.Tasks;
 
@@ -25,8 +27,9 @@ public interface ITaskStore
         Guid taskId,
         CancellationToken cancellationToken);
 
-    Task<IReadOnlyCollection<TaskItem>> ListByProjectAsync(
+    Task<PagedResult<TaskResponse>> ListByProjectAsync(
         Guid projectId,
+        TaskListQuery query,
         CancellationToken cancellationToken);
 
     Task AddAsync(

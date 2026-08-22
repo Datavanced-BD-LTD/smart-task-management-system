@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SmartTaskManagement.Application.Abstractions.Tasks;
+using SmartTaskManagement.Application.Common.Models;
+using SmartTaskManagement.Application.Features.Tasks;
 using SmartTaskManagement.Domain.Entities;
 using SmartTaskManagement.Infrastructure.Persistence;
 
@@ -58,16 +60,116 @@ public sealed class EfTaskStore(ApplicationDbContext dbContext) : ITaskStore
             .SingleOrDefaultAsync(taskItem => taskItem.Id == taskId, cancellationToken);
     }
 
-    public async Task<IReadOnlyCollection<TaskItem>> ListByProjectAsync(
+    public async Task<PagedResult<TaskResponse>> ListByProjectAsync(
         Guid projectId,
+        TaskListQuery query,
         CancellationToken cancellationToken)
     {
-        return await dbContext.TaskItems
+        var taskItems = dbContext.TaskItems
             .AsNoTracking()
             .Where(taskItem => taskItem.ProjectId == projectId)
-            .OrderBy(taskItem => taskItem.CreatedAtUtc)
-            .ThenBy(taskItem => taskItem.Id)
-            .ToArrayAsync(cancellationToken);
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(query.Keyword))
+        {
+            var keyword = query.Keyword.Trim().ToLowerInvariant();
+            var pattern = $"%{keyword}%";
+
+            taskItems = taskItems.Where(taskItem =>
+                EF.Functions.Like(taskItem.Title.ToLower(), pattern) ||
+                (taskItem.Description != null &&
+                 EF.Functions.Like(taskItem.Description.ToLower(), pattern)));
+        }
+
+        if (query.Status.HasValue)
+        {
+            taskItems = taskItems.Where(taskItem => taskItem.Status == query.Status.Value);
+        }
+
+        if (query.Priority.HasValue)
+        {
+            taskItems = taskItems.Where(taskItem => taskItem.Priority == query.Priority.Value);
+        }
+
+        if (query.AssignedUserId.HasValue)
+        {
+            taskItems = taskItems.Where(taskItem =>
+                taskItem.AssignedToUserId == query.AssignedUserId.Value);
+        }
+
+        if (query.DueDateFrom.HasValue)
+        {
+            taskItems = taskItems.Where(taskItem =>
+                taskItem.DueDate >= query.DueDateFrom.Value);
+        }
+
+        if (query.DueDateTo.HasValue)
+        {
+            taskItems = taskItems.Where(taskItem =>
+                taskItem.DueDate <= query.DueDateTo.Value);
+        }
+
+        var isDescending = string.Equals(
+            query.SortDirection,
+            "desc",
+            StringComparison.OrdinalIgnoreCase);
+
+        taskItems = query.SortColumn.ToLowerInvariant() switch
+        {
+            "title" => isDescending
+                ? taskItems.OrderByDescending(taskItem => taskItem.Title)
+                    .ThenBy(taskItem => taskItem.Id)
+                : taskItems.OrderBy(taskItem => taskItem.Title)
+                    .ThenBy(taskItem => taskItem.Id),
+            "status" => isDescending
+                ? taskItems.OrderByDescending(taskItem => taskItem.Status)
+                    .ThenBy(taskItem => taskItem.Id)
+                : taskItems.OrderBy(taskItem => taskItem.Status)
+                    .ThenBy(taskItem => taskItem.Id),
+            "priority" => isDescending
+                ? taskItems.OrderByDescending(taskItem => taskItem.Priority)
+                    .ThenBy(taskItem => taskItem.Id)
+                : taskItems.OrderBy(taskItem => taskItem.Priority)
+                    .ThenBy(taskItem => taskItem.Id),
+            "duedate" => isDescending
+                ? taskItems.OrderByDescending(taskItem => taskItem.DueDate)
+                    .ThenBy(taskItem => taskItem.Id)
+                : taskItems.OrderBy(taskItem => taskItem.DueDate)
+                    .ThenBy(taskItem => taskItem.Id),
+            _ => isDescending
+                ? taskItems.OrderByDescending(taskItem => taskItem.CreatedAtUtc)
+                    .ThenBy(taskItem => taskItem.Id)
+                : taskItems.OrderBy(taskItem => taskItem.CreatedAtUtc)
+                    .ThenBy(taskItem => taskItem.Id)
+        };
+
+        var totalCount = await taskItems.CountAsync(cancellationToken);
+        var skip = (long)(query.PageNumber - 1) * query.PageSize;
+        var projectedTasks = taskItems.Select(taskItem => new TaskResponse(
+            taskItem.Id,
+            taskItem.ProjectId,
+            taskItem.Title,
+            taskItem.Description,
+            taskItem.AssignedToUserId,
+            taskItem.CreatedByUserId,
+            taskItem.Status,
+            taskItem.Priority,
+            taskItem.DueDate,
+            taskItem.CreatedAtUtc,
+            taskItem.UpdatedAtUtc));
+
+        IReadOnlyCollection<TaskResponse> items = skip > int.MaxValue
+            ? []
+            : await projectedTasks
+                .Skip((int)skip)
+                .Take(query.PageSize)
+                .ToArrayAsync(cancellationToken);
+
+        return new PagedResult<TaskResponse>(
+            items,
+            query.PageNumber,
+            query.PageSize,
+            totalCount);
     }
 
     public async Task AddAsync(
