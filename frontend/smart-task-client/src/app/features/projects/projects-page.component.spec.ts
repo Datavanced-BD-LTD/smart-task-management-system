@@ -89,6 +89,17 @@ describe('ProjectsPageComponent', () => {
     });
   });
 
+  it('prevents a native page reload when the search form is submitted', () => {
+    fixture.detectChanges();
+    const searchSpy = vi.spyOn(component, 'searchProjects');
+    const submitEvent = new SubmitEvent('submit', { cancelable: true });
+
+    fixture.nativeElement.querySelector('form').dispatchEvent(submitEvent);
+
+    expect(submitEvent.defaultPrevented).toBe(true);
+    expect(searchSpy).toHaveBeenCalled();
+  });
+
   it('opens delete confirmation and deletes after confirmation', () => {
     fixture.detectChanges();
     dialog.open.mockReturnValue({ afterClosed: () => of(true) });

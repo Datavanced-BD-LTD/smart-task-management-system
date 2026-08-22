@@ -113,6 +113,11 @@ export class ProjectsPageComponent {
     this.searchProjects();
   }
 
+  onSearchSubmit(event: SubmitEvent): void {
+    event.preventDefault();
+    this.searchProjects();
+  }
+
   onSort(sort: Sort): void {
     const supportedColumns: readonly ProjectSortColumn[] = ['name', 'createdAt', 'updatedAt'];
     const nextColumn = supportedColumns.includes(sort.active as ProjectSortColumn)

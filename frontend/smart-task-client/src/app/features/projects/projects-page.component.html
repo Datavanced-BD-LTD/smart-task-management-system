@@ -11,7 +11,7 @@
     }
   </header>
 
-  <form class="search-bar" (ngSubmit)="searchProjects()" novalidate>
+  <form class="search-bar" (submit)="onSearchSubmit($event)" novalidate>
     <mat-form-field appearance="outline">
       <mat-label>Search projects</mat-label>
       <input
