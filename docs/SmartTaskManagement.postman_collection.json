@@ -180,6 +180,15 @@
       "name": "Project members",
       "item": [
         {
+          "name": "Search available project members",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/projects/{{projectId}}/available-members?keyword=team&pageNumber=1&pageSize=20",
+            "description": "Returns active Team Member users who are eligible to join the selected project. Search by first name, last name, or email. Requires an Admin or the Project Manager authorized for the project. The collection-level Bearer token supplies {{accessToken}}."
+          }
+        },
+        {
           "name": "List project members",
           "request": {
             "method": "GET",

@@ -57,6 +57,20 @@ try
     builder.Services.AddRateLimiter(options =>
     {
         options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+        options.OnRejected = async (context, cancellationToken) =>
+        {
+            context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+            context.HttpContext.Response.ContentType = "application/json";
+
+            await context.HttpContext.Response.WriteAsJsonAsync(
+                ApiResponseFactory.Failure<object?>(
+                    context.HttpContext,
+                    "Too many requests. Please try again later.",
+                    [new ApiError(
+                        "RATE_LIMIT_EXCEEDED",
+                        "The request limit has been exceeded. Please wait and try again.")]),
+                cancellationToken);
+        };
         options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(
             httpContext => RateLimitPartition.GetFixedWindowLimiter(
                 httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
