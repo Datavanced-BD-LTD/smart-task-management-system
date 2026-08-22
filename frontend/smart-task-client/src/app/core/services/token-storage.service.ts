@@ -1,53 +1,79 @@
-import { DOCUMENT, isPlatformBrowser } from '@angular/common';
-import { inject, Injectable, PLATFORM_ID } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { UserResponse } from '../models/auth.model';
 
 @Injectable({ providedIn: 'root' })
 export class TokenStorageService {
-  private readonly accessTokenKey = 'smart-task-access-token';
-  private readonly currentUserKey = 'smart-task-current-user';
-  private readonly document = inject(DOCUMENT);
-  private readonly platformId = inject(PLATFORM_ID);
+  private accessToken: string | null = null;
+  private currentUser: UserResponse | null = null;
 
   getAccessToken(): string | null {
-    return this.storage?.getItem(this.accessTokenKey) ?? null;
+    const accessToken = this.accessToken;
+
+    return accessToken && this.isTokenValid(accessToken) ? accessToken : null;
   }
 
   setAccessToken(accessToken: string): void {
-    this.storage?.setItem(this.accessTokenKey, accessToken);
+    this.accessToken = accessToken;
   }
 
   getCurrentUser(): UserResponse | null {
-    const serializedUser = this.storage?.getItem(this.currentUserKey);
-
-    if (!serializedUser) {
-      return null;
-    }
-
-    try {
-      return JSON.parse(serializedUser) as UserResponse;
-    } catch {
-      this.storage?.removeItem(this.currentUserKey);
-      return null;
-    }
+    return this.currentUser;
   }
 
   setCurrentUser(user: UserResponse): void {
-    this.storage?.setItem(this.currentUserKey, JSON.stringify(user));
+    this.currentUser = user;
   }
 
   clear(): void {
-    this.storage?.removeItem(this.accessTokenKey);
-    this.storage?.removeItem(this.currentUserKey);
+    this.accessToken = null;
+    this.currentUser = null;
   }
 
   hasAccessToken(): boolean {
     return Boolean(this.getAccessToken());
   }
 
-  private get storage(): Storage | null {
-    return isPlatformBrowser(this.platformId)
-      ? this.document.defaultView?.localStorage ?? null
-      : null;
+  getTokenRoles(): readonly string[] {
+    const accessToken = this.accessToken;
+    const payload = accessToken ? this.decodePayload(accessToken) : null;
+    const roleClaim =
+      payload?.['role'] ??
+      payload?.['roles'] ??
+      payload?.['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'];
+
+    if (typeof roleClaim === 'string') {
+      return [roleClaim];
+    }
+
+    return Array.isArray(roleClaim)
+      ? roleClaim.filter((role): role is string => typeof role === 'string')
+      : [];
+  }
+
+  private isTokenValid(accessToken: string): boolean {
+    const payload = this.decodePayload(accessToken);
+    const expiresAt = payload?.['exp'];
+
+    return typeof expiresAt === 'number' && expiresAt > Math.floor(Date.now() / 1000) + 30;
+  }
+
+  private decodePayload(accessToken: string): Record<string, unknown> | null {
+    const encodedPayload = accessToken.split('.')[1];
+
+    if (!encodedPayload) {
+      return null;
+    }
+
+    try {
+      const normalizedPayload = encodedPayload.replace(/-/g, '+').replace(/_/g, '/');
+      const paddedPayload = normalizedPayload.padEnd(
+        normalizedPayload.length + ((4 - (normalizedPayload.length % 4)) % 4),
+        '=',
+      );
+
+      return JSON.parse(atob(paddedPayload)) as Record<string, unknown>;
+    } catch {
+      return null;
+    }
   }
 }

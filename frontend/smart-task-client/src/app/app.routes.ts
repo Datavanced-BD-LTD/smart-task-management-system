@@ -1,13 +1,23 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
+import { guestGuard } from './core/guards/guest.guard';
 import { AppShellComponent } from './layout/app-shell.component';
 
 export const routes: Routes = [
   {
     path: 'auth/login',
+    canActivate: [guestGuard],
     loadComponent: () =>
       import('./features/auth/login-page.component').then(
         ({ LoginPageComponent }) => LoginPageComponent,
+      ),
+  },
+  {
+    path: 'auth/register',
+    canActivate: [guestGuard],
+    loadComponent: () =>
+      import('./features/auth/register-page.component').then(
+        ({ RegisterPageComponent }) => RegisterPageComponent,
       ),
   },
   {

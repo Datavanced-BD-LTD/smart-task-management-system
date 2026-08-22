@@ -1,7 +1,8 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
 import { computed, inject, Injectable, signal } from '@angular/core';
-import { Observable, finalize, tap } from 'rxjs';
+import { Observable, catchError, finalize, shareReplay, tap, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { SKIP_AUTH_REFRESH } from '../interceptors/http-context.tokens';
 import { ApiResponse } from '../models/api-response.model';
 import {
   AuthenticationResponse,
@@ -18,16 +19,16 @@ export class AuthService {
   private readonly currentUserSignal = signal<UserResponse | null>(
     this.tokenStorage.getCurrentUser(),
   );
-  private readonly authenticatedSignal = signal(
-    this.tokenStorage.hasAccessToken(),
-  );
+  private readonly authenticatedSignal = signal(this.tokenStorage.hasAccessToken());
+  private refreshRequest: Observable<ApiResponse<AuthenticationResponse>> | null = null;
 
   readonly currentUser = this.currentUserSignal.asReadonly();
+  readonly currentRoles = computed(
+    () => this.currentUserSignal()?.roles ?? this.tokenStorage.getTokenRoles(),
+  );
   readonly isAuthenticated = computed(() => this.authenticatedSignal());
 
-  login(
-    request: LoginRequest,
-  ): Observable<ApiResponse<AuthenticationResponse>> {
+  login(request: LoginRequest): Observable<ApiResponse<AuthenticationResponse>> {
     return this.http
       .post<ApiResponse<AuthenticationResponse>>(
         `${environment.apiBaseUrl}/v1/auth/login`,
@@ -37,9 +38,7 @@ export class AuthService {
       .pipe(tap((response) => this.storeSession(response.data)));
   }
 
-  register(
-    request: RegisterRequest,
-  ): Observable<ApiResponse<UserResponse>> {
+  register(request: RegisterRequest): Observable<ApiResponse<UserResponse>> {
     return this.http.post<ApiResponse<UserResponse>>(
       `${environment.apiBaseUrl}/v1/auth/register`,
       request,
@@ -47,22 +46,41 @@ export class AuthService {
   }
 
   refresh(): Observable<ApiResponse<AuthenticationResponse>> {
-    return this.http
+    if (this.refreshRequest) {
+      return this.refreshRequest;
+    }
+
+    const context = new HttpContext().set(SKIP_AUTH_REFRESH, true);
+    this.refreshRequest = this.http
       .post<ApiResponse<AuthenticationResponse>>(
         `${environment.apiBaseUrl}/v1/auth/refresh`,
         null,
-        { withCredentials: true },
+        { context, withCredentials: true },
       )
-      .pipe(tap((response) => this.storeSession(response.data)));
+      .pipe(
+        tap((response) => this.storeSession(response.data)),
+        catchError((error: unknown) => {
+          this.clearSession();
+          return throwError(() => error);
+        }),
+        finalize(() => {
+          this.refreshRequest = null;
+        }),
+        shareReplay({ bufferSize: 1, refCount: false }),
+      );
+
+    return this.refreshRequest;
+  }
+
+  getCurrentUser(): Observable<ApiResponse<UserResponse>> {
+    return this.http.get<ApiResponse<UserResponse>>(`${environment.apiBaseUrl}/v1/auth/me`);
   }
 
   logout(): Observable<ApiResponse<null>> {
     return this.http
-      .post<ApiResponse<null>>(
-        `${environment.apiBaseUrl}/v1/auth/logout`,
-        null,
-        { withCredentials: true },
-      )
+      .post<ApiResponse<null>>(`${environment.apiBaseUrl}/v1/auth/logout`, null, {
+        withCredentials: true,
+      })
       .pipe(finalize(() => this.clearSession()));
   }
 

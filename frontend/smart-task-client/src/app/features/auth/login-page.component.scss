@@ -1,0 +1,51 @@
+:host {
+  display: block;
+}
+
+.auth-page {
+  display: grid;
+  min-height: 100dvh;
+  padding: 1rem;
+  place-items: center;
+  background: #f5f7fb;
+}
+
+.auth-card {
+  width: min(100%, 28rem);
+}
+
+form {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+.submit-button {
+  min-height: 2.75rem;
+  margin-top: 0.5rem;
+}
+
+mat-card-actions {
+  gap: 0.25rem;
+  padding: 0 1rem 1rem;
+}
+
+.error-message,
+.success-message {
+  display: grid;
+  gap: 0.25rem;
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.35rem;
+  line-height: 1.4;
+}
+
+.error-message {
+  background: #ffebee;
+  color: #b3261e;
+}
+
+.success-message {
+  background: #e8f5e9;
+  color: #1b5e20;
+}
