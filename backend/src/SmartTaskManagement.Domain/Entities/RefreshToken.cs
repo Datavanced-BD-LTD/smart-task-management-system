@@ -68,6 +68,8 @@ public sealed class RefreshToken
 
     public bool IsActive(DateTime utcNow)
     {
+        // A token is usable only before expiry and before explicit revocation. Both
+        // checks are required for logout and refresh-token replay protection.
         return RevokedAtUtc is null && ExpiresAtUtc > utcNow;
     }
 
@@ -77,6 +79,8 @@ public sealed class RefreshToken
         string? revokedByIp,
         Guid? replacedByTokenId = null)
     {
+        // Revoke is idempotent so repeated logout or reuse handling cannot overwrite
+        // the original audit reason and timestamp.
         if (RevokedAtUtc is not null)
         {
             return;

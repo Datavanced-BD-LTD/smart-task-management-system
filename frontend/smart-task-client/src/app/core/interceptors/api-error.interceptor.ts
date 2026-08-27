@@ -16,6 +16,8 @@ export const apiErrorInterceptor: HttpInterceptorFn = (request, next) => {
   const skipAuthRefresh = request.context.get(SKIP_AUTH_REFRESH);
   const accessToken = tokenStorage.getAccessToken();
 
+  // Only requests to the configured API receive credentials. The refresh token stays
+  // in an HttpOnly cookie; JavaScript handles only the short-lived access token.
   const apiRequest = isApiRequest
     ? request.clone({
         setHeaders:
@@ -38,6 +40,8 @@ export const apiErrorInterceptor: HttpInterceptorFn = (request, next) => {
         return throwError(() => error);
       }
 
+      // AuthService coalesces concurrent refresh attempts. The context marker on the
+      // retry prevents a second 401 from creating an infinite refresh loop.
       return authService.refresh().pipe(
         switchMap((response) => {
           const refreshedToken = response.data?.accessToken;

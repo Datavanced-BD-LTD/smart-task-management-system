@@ -14,6 +14,8 @@ public sealed class EfDashboardStore(ApplicationDbContext dbContext) : IDashboar
         int upcomingDays,
         CancellationToken cancellationToken)
     {
+        // Both project and task queries are scoped before Count/GroupBy. SQL Server
+        // performs the aggregation without materializing entire tables in memory.
         var projects = dbContext.Projects
             .AsNoTracking()
             .Where(project => !project.IsDeleted);
@@ -50,6 +52,8 @@ public sealed class EfDashboardStore(ApplicationDbContext dbContext) : IDashboar
                     member.UserId == scope.MemberUserId.Value));
         }
 
+        // Team Member task statistics are narrower than project visibility: members
+        // see the project, but dashboard task totals include only their assigned work.
         if (scope.AssignedToUserId.HasValue)
         {
             tasks = tasks.Where(taskItem =>

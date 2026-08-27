@@ -28,6 +28,8 @@ public sealed class DashboardService(
             query.UpcomingDays,
             cancellationToken);
 
+        // Enumerating every enum value fills missing database groups with zero, giving
+        // clients a stable response shape even when no tasks use a status or priority.
         var tasksByStatus = Enum.GetValues<TaskStatusEnum>()
             .Select(status => new DashboardStatusCount(
                 status,
@@ -58,6 +60,8 @@ public sealed class DashboardService(
         Guid currentUserId,
         IReadOnlyCollection<string> roles)
     {
+        // A compact scope object lets Infrastructure apply authorization filters before
+        // aggregation, ensuring unauthorized rows never enter the calculated totals.
         if (roles.Contains(RoleNames.Admin, StringComparer.OrdinalIgnoreCase))
         {
             return new DashboardScope(null, null, null);

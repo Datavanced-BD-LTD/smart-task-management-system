@@ -4,6 +4,8 @@ import { guestGuard } from './core/guards/guest.guard';
 import { AppShellComponent } from './layout/app-shell.component';
 
 export const routes: Routes = [
+  // Guest-only routes keep authenticated users out of login/register, while feature
+  // components are lazy-loaded so their code is downloaded only when navigated to.
   {
     path: 'auth/login',
     canActivate: [guestGuard],
@@ -23,6 +25,8 @@ export const routes: Routes = [
   {
     path: '',
     component: AppShellComponent,
+    // The shell protects every child route. UI guards improve navigation only; the
+    // backend remains the final authority for every role and resource operation.
     canActivate: [authGuard],
     children: [
       {

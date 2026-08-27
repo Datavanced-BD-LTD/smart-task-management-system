@@ -3,6 +3,8 @@ import { UserResponse } from '../models/auth.model';
 
 @Injectable({ providedIn: 'root' })
 export class TokenStorageService {
+  // Keeping the access token in memory limits persistence after a tab is closed. The
+  // backend-issued HttpOnly refresh cookie restores a session when appropriate.
   private accessToken: string | null = null;
   private currentUser: UserResponse | null = null;
 
@@ -54,6 +56,7 @@ export class TokenStorageService {
     const payload = this.decodePayload(accessToken);
     const expiresAt = payload?.['exp'];
 
+    // The small safety window avoids sending a token that will expire during transit.
     return typeof expiresAt === 'number' && expiresAt > Math.floor(Date.now() / 1000) + 30;
   }
 

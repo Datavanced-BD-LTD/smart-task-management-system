@@ -25,12 +25,16 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
 
+    // The bootstrap logger captures startup failures; this configured logger takes
+    // over once dependency injection and application configuration are available.
     builder.Host.UseSerilog((context, services, loggerConfiguration) => loggerConfiguration
         .ReadFrom.Configuration(context.Configuration)
         .ReadFrom.Services(services)
         .Enrich.FromLogContext()
         .WriteTo.Console());
 
+    // Program.cs is the composition root: Application registers use cases while
+    // Infrastructure supplies their database, security, clock, and AI adapters.
     builder.Services.AddApplication();
     builder.Services.AddInfrastructure(builder.Configuration);
 
@@ -47,15 +51,20 @@ try
 
     builder.Services.AddCors(options =>
     {
+        // Credentials are needed for the HttpOnly refresh-token cookie, so wildcard
+        // origins are intentionally avoided and every frontend origin is explicit.
         options.AddPolicy("Frontend", policy => policy
             .WithOrigins(allowedOrigins)
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials());
     });
-
+    // Add rate limiting middleware to control the number of requests per client.
+    // This helps prevent abuse and ensures fair usage of the API.
     builder.Services.AddRateLimiter(options =>
     {
+        // Infrastructure-level failures use the same envelope as controller and
+        // exception responses, keeping frontend error handling predictable.
         options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
         options.OnRejected = async (context, cancellationToken) =>
         {
@@ -87,15 +96,18 @@ try
         .GetSection(JwtOptions.SectionName)
         .Get<JwtOptions>()
         ?? throw new InvalidOperationException("JWT configuration is required.");
-
+    // Configure JWT authentication options based on the application's configuration.
     builder.Services
         .AddAuthentication(options =>
         {
+            // Set the default authentication scheme to JWT Bearer.
             options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+            // Set the default challenge scheme to JWT Bearer.
             options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
         })
         .AddJwtBearer(options =>
         {
+            // Configure the token validation parameters for JWT Bearer authentication.
             options.TokenValidationParameters = new TokenValidationParameters
             {
                 ValidateIssuer = true,
@@ -106,13 +118,15 @@ try
                 IssuerSigningKey = new SymmetricSecurityKey(
                     Encoding.UTF8.GetBytes(jwtOptions.SigningKey)),
                 ValidateLifetime = true,
-                ClockSkew = TimeSpan.FromSeconds(30),
+                ClockSkew = TimeSpan.FromSeconds(30),// Allow a 30-second clock skew for token expiration validation.
                 RoleClaimType = ClaimTypes.Role,
                 NameClaimType = ClaimTypes.NameIdentifier
             };
 
             options.Events = new JwtBearerEvents
             {
+                // Replace framework-default empty 401/403 responses with the API's
+                // standard failure contract and trace identifier.
                 OnChallenge = async context =>
                 {
                     context.HandleResponse();
@@ -125,6 +139,7 @@ try
                             [new ApiError("AUTHENTICATION_REQUIRED", "A valid access token is required.")]),
                         context.HttpContext.RequestAborted);
                 },
+                // Handle forbidden responses by returning a standardized API failure response.
                 OnForbidden = async context =>
                 {
                     context.Response.StatusCode = StatusCodes.Status403Forbidden;
@@ -141,6 +156,8 @@ try
 
     builder.Services.AddAuthorization(options =>
     {
+        // These policies provide coarse role checks. Ownership, membership, and
+        // assignment checks still belong in application services because they need data.
         options.AddPolicy("AdminOnly", policy => policy.RequireRole(RoleNames.Admin));
         options.AddPolicy(
             "ProjectManagerOnly",
@@ -189,33 +206,39 @@ try
             [new OpenApiSecuritySchemeReference("Bearer", document)] = []
         });
     });
+    // Add ProblemDetails middleware to provide standardized error responses.
     builder.Services.AddProblemDetails();
+    // Add global exception handler middleware to catch and handle exceptions
+    // globally throughout the application.
     builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
     var app = builder.Build();
 
-    app.UseSerilogRequestLogging();
-    app.UseExceptionHandler();
-    app.UseHttpsRedirection();
-    app.UseCors("Frontend");
-    app.UseRateLimiter();
+    app.UseSerilogRequestLogging();// Enable Serilog request logging middleware
+    app.UseExceptionHandler();// Enable global exception handling middleware
+    app.UseHttpsRedirection();// Enable HTTPS redirection middleware
+    app.UseCors("Frontend");// Enable CORS middleware for the frontend
+    app.UseRateLimiter();// Enable rate limiting middleware
 
     if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Swagger:Enabled"))
     {
-        app.UseSwagger();
-        app.UseSwaggerUI();
+        app.UseSwagger();// Enable Swagger middleware
+        app.UseSwaggerUI();// Enable Swagger UI middleware
     }
 
-    app.UseAuthentication();
-    app.UseAuthorization();
+    // Authentication must populate HttpContext.User before authorization evaluates it.
+    app.UseAuthentication();// Enable authentication middleware
+    app.UseAuthorization();// Enable authorization middleware
 
+    // Automatic migration/seeding is a development convenience. Production should
+    // normally apply reviewed migrations as an explicit deployment step.
     if (app.Environment.IsDevelopment() ||
         app.Configuration.GetValue<bool>("Authentication:ApplyMigrationsOnStartup"))
     {
         await AuthDbSeeder.InitializeAsync(app.Services, app.Configuration);
     }
 
-    app.MapControllers();
+    app.MapControllers();// Map controller routes
 
     app.MapGet("/", (HttpContext context) => Results.Ok(ApiResponseFactory.Success(
         context,

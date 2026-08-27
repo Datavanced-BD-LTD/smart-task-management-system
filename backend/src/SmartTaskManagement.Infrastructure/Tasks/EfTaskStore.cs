@@ -47,6 +47,8 @@ public sealed class EfTaskStore(ApplicationDbContext dbContext) : ITaskStore
         Guid taskId,
         CancellationToken cancellationToken)
     {
+        // Read-only lookups avoid change-tracking overhead. Mutation lookups below
+        // intentionally remain tracked so SaveChanges can persist domain updates.
         return dbContext.TaskItems
             .AsNoTracking()
             .SingleOrDefaultAsync(taskItem => taskItem.Id == taskId, cancellationToken);
@@ -100,6 +102,8 @@ public sealed class EfTaskStore(ApplicationDbContext dbContext) : ITaskStore
         TaskListQuery query,
         CancellationToken cancellationToken)
     {
+        // Keep this as IQueryable: EF composes filters, sorting, projection, and
+        // pagination into SQL instead of loading all tasks into application memory.
         var taskItems = dbContext.TaskItems
             .AsNoTracking()
             .Where(taskItem => taskItem.ProjectId == projectId)
@@ -149,6 +153,8 @@ public sealed class EfTaskStore(ApplicationDbContext dbContext) : ITaskStore
             "desc",
             StringComparison.OrdinalIgnoreCase);
 
+        // Sort columns are validated against a whitelist before reaching this store.
+        // Id is a stable tie-breaker so records do not jump between result pages.
         taskItems = query.SortColumn.ToLowerInvariant() switch
         {
             "title" => isDescending
@@ -178,6 +184,8 @@ public sealed class EfTaskStore(ApplicationDbContext dbContext) : ITaskStore
                     .ThenBy(taskItem => taskItem.Id)
         };
 
+        // Count the filtered query before applying Skip/Take so pagination metadata
+        // represents the complete filtered result set.
         var totalCount = await taskItems.CountAsync(cancellationToken);
         var skip = (long)(query.PageNumber - 1) * query.PageSize;
         var projectedTasks = taskItems.Select(taskItem => new TaskResponse(

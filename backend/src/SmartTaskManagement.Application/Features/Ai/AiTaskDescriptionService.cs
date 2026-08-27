@@ -12,6 +12,8 @@ public sealed class AiTaskDescriptionService(
         ImproveTaskDescriptionRequest request,
         CancellationToken cancellationToken)
     {
+        // Validate before invoking the provider so invalid input does not consume
+        // model time or count against the AI endpoint's rate limit unnecessarily.
         var validationResult = await validator.ValidateAsync(request, cancellationToken);
 
         if (!validationResult.IsValid)
@@ -19,6 +21,8 @@ public sealed class AiTaskDescriptionService(
             throw new ValidationException(validationResult.Errors);
         }
 
+        // The application service owns the use-case contract; the provider abstraction
+        // keeps Ollama-specific transport details out of the API layer.
         var improvedDescription = await provider.ImproveAsync(
             request.Description.Trim(),
             cancellationToken);

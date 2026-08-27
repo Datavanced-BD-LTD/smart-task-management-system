@@ -63,12 +63,16 @@ public sealed class TaskItem
 
     public void AssignTo(Guid? assignedToUserId, DateTime updatedAtUtc)
     {
+        // Null is a deliberate value: it represents an unassigned task rather than
+        // requiring a special endpoint or placeholder user record.
         AssignedToUserId = assignedToUserId;
         UpdatedAtUtc = updatedAtUtc;
     }
 
     public void ChangeStatus(TaskStatusEnum status, DateTime updatedAtUtc)
     {
+        // The entity delegates workflow rules to a domain policy so every caller,
+        // including the full update path, receives the same transition validation.
         TaskStatusTransitionPolicy.EnsureAllowed(Status, status);
         Status = status;
         UpdatedAtUtc = updatedAtUtc;
@@ -89,6 +93,8 @@ public sealed class TaskItem
         DateTime? dueDate,
         DateTime updatedAtUtc)
     {
+        // Domain mutation methods keep timestamps and transition rules together so
+        // application services cannot accidentally persist an inconsistent state.
         TaskStatusTransitionPolicy.EnsureAllowed(Status, status);
         Title = title.Trim();
         Description = description?.Trim();

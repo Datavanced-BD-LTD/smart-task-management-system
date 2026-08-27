@@ -26,6 +26,8 @@ public sealed class ProjectService(
         await ValidateAsync(createValidator, request, cancellationToken);
         EnsureCanCreate(roles);
 
+        // Project Manager ownership is resolved on the server so callers cannot
+        // assign work to an arbitrary manager by changing a request field.
         var projectManagerId = await ResolveProjectManagerIdAsync(
             request.ProjectManagerId,
             currentUserId,
@@ -124,6 +126,8 @@ public sealed class ProjectService(
         await ValidateAsync(listValidator, query, cancellationToken);
         EnsureCanRead(roles);
 
+        // Store-level scope filters the query before pagination, so users cannot infer
+        // or receive projects outside the resources their role permits them to see.
         Guid? projectManagerId =
             IsProjectManager(roles) && !IsAdmin(roles)
                 ? currentUserId
@@ -274,6 +278,8 @@ public sealed class ProjectService(
         Project project,
         CancellationToken cancellationToken)
     {
+        // Responses include friendly identity fields while keeping the entity and its
+        // navigation graph out of the API contract.
         var projectManager = project.ProjectManager ?? await authStore.FindUserByIdAsync(
             project.ProjectManagerId,
             cancellationToken);

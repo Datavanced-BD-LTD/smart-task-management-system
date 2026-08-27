@@ -32,9 +32,13 @@ public static class DependencyInjection
                 "The 'ConnectionStrings:DefaultConnection' configuration value is required.");
         }
 
+        // SQL transient retries help with brief connection interruptions. They do not
+        // replace transaction design or retry-safe business operations.
         services.AddDbContext<ApplicationDbContext>(options => options
             .UseSqlServer(connectionString, sqlOptions => sqlOptions.EnableRetryOnFailure()));
 
+        // Fail during startup rather than discovering invalid security/provider
+        // configuration only when the first request reaches the application.
         services.AddOptions<JwtOptions>()
             .Bind(configuration.GetSection(JwtOptions.SectionName))
             .Validate(
@@ -62,9 +66,13 @@ public static class DependencyInjection
 
         services.AddHttpClient(OllamaAiTaskDescriptionProvider.HttpClientName, client =>
         {
+            // The provider uses a linked cancellation token for its configurable
+            // timeout, avoiding two competing HttpClient timeout mechanisms.
             client.Timeout = Timeout.InfiniteTimeSpan;
         });
 
+        // These registrations are the Clean Architecture boundary: application
+        // abstractions are fulfilled by EF Core and external-provider adapters here.
         services.AddScoped<IAuthStore, EfAuthStore>();
         services.AddScoped<IProjectStore, EfProjectStore>();
         services.AddScoped<ITaskStore, EfTaskStore>();

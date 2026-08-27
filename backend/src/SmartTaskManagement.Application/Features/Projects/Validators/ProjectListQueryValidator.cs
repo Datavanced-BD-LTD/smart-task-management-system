@@ -9,6 +9,8 @@ public sealed class ProjectListQueryValidator : AbstractValidator<ProjectListQue
 
     public ProjectListQueryValidator()
     {
+        // Project list inputs are validated before the store builds its IQueryable,
+        // keeping sorting and pagination predictable for every caller.
         RuleFor(query => query.Search)
             .MaximumLength(200);
 

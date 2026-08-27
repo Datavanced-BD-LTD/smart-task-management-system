@@ -18,6 +18,8 @@ public sealed class GlobalExceptionHandler(
     {
         var traceId = httpContext.TraceIdentifier;
 
+        // Keep the trace ID in logs and responses so support can correlate a safe
+        // client error with server diagnostics without exposing exception details.
         logger.LogError(
             exception,
             "Unhandled exception for {RequestMethod} {RequestPath}. TraceId: {TraceId}",
@@ -25,6 +27,8 @@ public sealed class GlobalExceptionHandler(
             httpContext.Request.Path,
             traceId);
 
+        // Validation errors preserve field names for form feedback; other exceptions
+        // are mapped to safe categories instead of returning internal messages.
         if (exception is ValidationException validationException)
         {
             var errors = validationException.Errors
@@ -82,6 +86,8 @@ public sealed class GlobalExceptionHandler(
             _ => "An unexpected error occurred."
         };
 
+        // Only known business-validation messages are safe to return verbatim. This
+        // prevents database, provider, and framework details leaking through the API.
         var errorMessage = exception is AuthenticationException or
             InvalidTaskAssigneeException or
             TaskAssigneeNotProjectMemberException

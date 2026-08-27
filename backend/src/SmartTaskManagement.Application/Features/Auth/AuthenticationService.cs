@@ -32,6 +32,8 @@ public sealed class AuthenticationService(
             throw new DuplicateEmailException();
         }
 
+        // Public registration always creates the least-privileged role. Elevated
+        // roles are assigned through controlled administration/seeding, not user input.
         var teamMemberRole = await authStore.FindRoleByNameAsync(
             RoleNames.TeamMember,
             cancellationToken);
@@ -66,6 +68,8 @@ public sealed class AuthenticationService(
             NormalizeEmail(request.Email),
             cancellationToken);
 
+        // One generic failure prevents callers from learning whether an email exists,
+        // the account is disabled, or only the password is incorrect.
         if (user is null ||
             !user.IsActive ||
             !passwordService.VerifyPassword(user, request.Password, user.PasswordHash))
@@ -76,6 +80,8 @@ public sealed class AuthenticationService(
         var now = systemClock.UtcNow;
         var roleNames = GetRoleNames(user);
         var accessToken = tokenService.CreateAccessToken(user, roleNames);
+        // Only the hash is persisted. The raw refresh token is returned once so the
+        // API layer can place it in an HttpOnly cookie.
         var rawRefreshToken = tokenService.CreateRefreshToken();
         var refreshToken = RefreshToken.Create(
             user.UserId,
@@ -116,6 +122,8 @@ public sealed class AuthenticationService(
 
         if (!currentRefreshToken.IsActive(now) || !currentRefreshToken.User.IsActive)
         {
+            // Reuse of a revoked token suggests theft or replay. Revoking its family
+            // invalidates replacement tokens created from the same login session.
             if (currentRefreshToken.RevokedAtUtc is not null)
             {
                 await authStore.RevokeRefreshTokenFamilyAsync(
@@ -143,6 +151,7 @@ public sealed class AuthenticationService(
             tokenService.GetRefreshTokenExpiry(now),
             ipAddress);
 
+        // Rotation makes every refresh token single-use and links it to its replacement.
         currentRefreshToken.Revoke(
             now,
             "Rotated",

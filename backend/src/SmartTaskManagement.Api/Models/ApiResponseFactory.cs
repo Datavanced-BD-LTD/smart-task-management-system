@@ -9,6 +9,8 @@ public static class ApiResponseFactory
         T data,
         string message)
     {
+        // Every successful endpoint gets the same trace identifier shape, allowing
+        // frontend code and support logs to correlate a response consistently.
         return new ApiResponse<T>(
             true,
             message,
@@ -22,6 +24,8 @@ public static class ApiResponseFactory
         string message,
         IReadOnlyCollection<ApiError> errors)
     {
+        // Keep errors structured and transport-independent so controllers, middleware,
+        // authentication handlers, and rate limiting share one response contract.
         return new ApiResponse<T>(
             false,
             message,

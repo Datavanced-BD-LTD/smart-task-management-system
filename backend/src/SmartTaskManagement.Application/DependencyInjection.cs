@@ -17,7 +17,12 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
+        // Assembly scanning keeps validators close to their request models without
+        // requiring Program.cs to know about every feature-specific validator.
         services.AddValidatorsFromAssemblyContaining<RegisterRequestValidator>();
+
+        // Application services contain use cases and depend only on abstractions;
+        // their concrete persistence/provider implementations are registered elsewhere.
         services.AddScoped<AuthenticationService>();
         services.AddScoped<ProjectService>();
         services.AddScoped<ProjectMembershipService>();

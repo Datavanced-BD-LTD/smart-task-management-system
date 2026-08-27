@@ -28,6 +28,8 @@ public sealed class ProjectMembershipService(
         var project = await GetProjectAsync(projectId, cancellationToken);
         EnsureCanManage(project, currentUserId, roles);
 
+        // The store excludes inactive users and current members in SQL, which keeps
+        // the autocomplete list both safe and efficient as the user base grows.
         var availableMembers = await projectStore.ListAvailableMembersAsync(
             projectId,
             query,
@@ -69,6 +71,8 @@ public sealed class ProjectMembershipService(
 
         var user = await authStore.FindUserByIdAsync(request.UserId, cancellationToken);
 
+        // Membership is intentionally limited to active Team Members; elevated roles
+        // do not need to be added to projects to administer the system.
         if (user is null || !user.IsActive || !HasRole(user, RoleNames.TeamMember))
         {
             throw new InvalidProjectMemberException();
@@ -219,6 +223,7 @@ public sealed class ProjectMembershipService(
 
     private static string GetDisplayName(User user)
     {
+        // Prefer a human-readable name, then email, and never fall back to a raw GUID.
         var displayName = $"{user.FirstName} {user.LastName}".Trim();
         return string.IsNullOrWhiteSpace(displayName)
             ? user.Email

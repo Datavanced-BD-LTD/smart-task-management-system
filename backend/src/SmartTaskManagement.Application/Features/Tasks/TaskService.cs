@@ -27,6 +27,8 @@ public sealed class TaskService(
     {
         await ValidateAsync(createValidator, request, cancellationToken);
 
+        // Resource authorization is evaluated here because ownership and membership
+        // cannot be determined from a role attribute alone.
         var project = await GetProjectAsync(projectId, cancellationToken);
         EnsureCanManageProject(project, currentUserId, roles, "create");
         await ValidateAssigneeAsync(projectId, request.AssignedToUserId, cancellationToken);
@@ -101,6 +103,8 @@ public sealed class TaskService(
             ?? throw new TaskNotFoundException(taskId);
         var project = await GetProjectAsync(taskItem.ProjectId, cancellationToken);
 
+        // The full update can change privileged fields, so Team Members must use the
+        // narrower status endpoint even when the task is assigned to them.
         EnsureCanUpdate(project, currentUserId, roles);
 
         var assignedToUserId = request.AssignedToUserId ?? taskItem.AssignedToUserId;
@@ -155,6 +159,8 @@ public sealed class TaskService(
             ?? throw new TaskNotFoundException(taskId);
         var project = await GetProjectAsync(taskItem.ProjectId, cancellationToken);
 
+        // Status is intentionally a separate operation: an assigned Team Member may
+        // progress work without gaining permission to change assignment or priority.
         await EnsureCanUpdateStatusAsync(
             taskItem,
             project,
@@ -357,6 +363,8 @@ public sealed class TaskService(
             return;
         }
 
+        // Assignment requires both an active account and current project membership;
+        // existence alone is not enough to grant access to project work.
         if (!await taskStore.IsActiveUserAsync(assignedToUserId.Value, cancellationToken))
         {
             throw new InvalidTaskAssigneeException();

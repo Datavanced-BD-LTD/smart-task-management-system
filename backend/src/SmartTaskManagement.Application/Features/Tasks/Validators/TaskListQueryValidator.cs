@@ -17,6 +17,8 @@ public sealed class TaskListQueryValidator : AbstractValidator<TaskListQuery>
 
     public TaskListQueryValidator()
     {
+        // Query validation protects the database query from unreasonable page sizes,
+        // invalid enum filters, and dynamic sort expressions outside the whitelist.
         RuleFor(query => query.Keyword)
             .MaximumLength(200);
 

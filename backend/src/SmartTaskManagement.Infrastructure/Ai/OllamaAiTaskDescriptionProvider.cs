@@ -24,6 +24,8 @@ public sealed class OllamaAiTaskDescriptionProvider(
         string description,
         CancellationToken cancellationToken)
     {
+        // Link the caller's cancellation with a provider timeout so client disconnects
+        // and slow AI responses stop the same in-flight HTTP operation.
         using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeoutSource.CancelAfter(TimeSpan.FromSeconds(_options.TimeoutSeconds));
 
@@ -40,6 +42,8 @@ public sealed class OllamaAiTaskDescriptionProvider(
                     include a title, explanation, preamble, quotation marks, Markdown code fences,
                     or commentary about the changes.
                     """),
+                // Delimiters and the system instruction treat task text as data, reducing
+                // the chance that prompt-like user content overrides provider behavior.
                 new OllamaMessage("user", $"""
                     Improve the task description inside these delimiters:
                     <task-description>
@@ -73,6 +77,8 @@ public sealed class OllamaAiTaskDescriptionProvider(
                 HttpCompletionOption.ResponseHeadersRead,
                 timeoutSource.Token);
 
+            // Log only status/category information. Provider bodies may contain user
+            // text or sensitive operational details and are never copied into API errors.
             if (!response.IsSuccessStatusCode)
             {
                 logger.LogWarning(
