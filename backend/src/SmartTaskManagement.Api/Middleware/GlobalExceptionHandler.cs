@@ -59,7 +59,10 @@ public sealed class GlobalExceptionHandler(
             ProjectNotFoundException => StatusCodes.Status404NotFound,
             TaskNotFoundException => StatusCodes.Status404NotFound,
             ProjectMemberNotFoundException => StatusCodes.Status404NotFound,
+            ManagedUserNotFoundException => StatusCodes.Status404NotFound,
             InvalidProjectManagerException => StatusCodes.Status400BadRequest,
+            InvalidManagedUserRoleException => StatusCodes.Status400BadRequest,
+            ProtectedUserException => StatusCodes.Status400BadRequest,
             InvalidProjectMemberException => StatusCodes.Status400BadRequest,
             InvalidTaskAssigneeException => StatusCodes.Status400BadRequest,
             TaskAssigneeNotProjectMemberException => StatusCodes.Status400BadRequest,
@@ -92,6 +95,8 @@ public sealed class GlobalExceptionHandler(
             InvalidTaskAssigneeException or
             TaskAssigneeNotProjectMemberException
             or InvalidTaskStatusTransitionException
+            or InvalidManagedUserRoleException
+            or ProtectedUserException
             ? exception.Message
             : message;
         var errorCode = statusCode switch

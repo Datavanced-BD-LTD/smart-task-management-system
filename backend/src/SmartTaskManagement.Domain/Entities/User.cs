@@ -61,6 +61,13 @@ public sealed class User
         }
     }
 
+    public void ReplaceRoles(Role role, DateTime updatedAtUtc)
+    {
+        UserRoles.Clear();
+        AssignRole(role);
+        UpdatedAtUtc = updatedAtUtc;
+    }
+
     public void RecordSuccessfulLogin()
     {
         LastLoginAtUtc = DateTime.UtcNow;

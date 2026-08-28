@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
+import { adminGuard } from './core/guards/admin.guard';
 import { guestGuard } from './core/guards/guest.guard';
 import { AppShellComponent } from './layout/app-shell.component';
 
@@ -62,6 +63,14 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/tasks/tasks-page.component').then(
             ({ TasksPageComponent }) => TasksPageComponent,
+          ),
+      },
+      {
+        path: 'admin/users',
+        canActivate: [adminGuard],
+        loadComponent: () =>
+          import('./features/admin/admin-users-page.component').then(
+            ({ AdminUsersPageComponent }) => AdminUsersPageComponent,
           ),
       },
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },

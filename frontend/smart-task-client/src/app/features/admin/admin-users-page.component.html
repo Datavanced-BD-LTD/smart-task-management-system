@@ -1,0 +1,65 @@
+<main class="admin-users-page" aria-labelledby="admin-users-title">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">Administration</p>
+      <h1 id="admin-users-title">User management</h1>
+      <p class="page-description">Create users and manage Project Manager access.</p>
+    </div>
+    <button mat-flat-button type="button" (click)="openCreateDialog()">Create user</button>
+  </header>
+
+  <form class="search-bar" (submit)="onSearchSubmit($event)" novalidate>
+    <mat-form-field appearance="outline">
+      <mat-label>Search users</mat-label>
+      <input matInput [formControl]="searchControl" type="search" autocomplete="off" aria-label="Search users by name or email" />
+      @if (searchControl.value) {
+        <button mat-button matSuffix type="button" aria-label="Clear user search" (click)="clearSearch()">Clear</button>
+      }
+    </mat-form-field>
+    <button mat-stroked-button type="submit">Search</button>
+  </form>
+
+  @if (actionErrorMessage(); as actionError) {
+    <mat-card class="error-state" role="alert"><mat-card-content>{{ actionError }}</mat-card-content></mat-card>
+  }
+
+  @if (loading()) {
+    <div class="loading-state" role="status" aria-live="polite">
+      <span>Loading users...</span>
+      <mat-progress-bar mode="indeterminate" aria-label="Loading users" />
+    </div>
+  }
+
+  @if (errorMessage(); as error) {
+    <mat-card class="error-state" role="alert">
+      <mat-card-header><mat-card-title>Users unavailable</mat-card-title></mat-card-header>
+      <mat-card-content>
+        <p>{{ error }}</p>
+        @for (apiError of apiErrors(); track apiError.code + (apiError.field ?? '')) { <p class="api-error">{{ apiError.message }}</p> }
+      </mat-card-content>
+      <mat-card-actions><button mat-flat-button type="button" (click)="loadUsers()">Try again</button></mat-card-actions>
+    </mat-card>
+  }
+
+  @if (!loading() && hasLoaded() && !hasUsers() && !errorMessage()) {
+    <mat-card class="empty-state" role="status"><mat-card-header><mat-card-title>No users found</mat-card-title></mat-card-header><mat-card-content><p>Try another search or create a user.</p></mat-card-content></mat-card>
+  }
+
+  @if (users(); as userPage) {
+    <mat-card class="table-card">
+      <div class="table-wrapper">
+        <table mat-table [dataSource]="userPage.items" [trackBy]="trackUser" aria-label="Managed users">
+          <ng-container matColumnDef="user"><th mat-header-cell *matHeaderCellDef>User</th><td mat-cell *matCellDef="let user"><strong>{{ user.displayName || user.email }}</strong></td></ng-container>
+          <ng-container matColumnDef="email"><th mat-header-cell *matHeaderCellDef>Email</th><td mat-cell *matCellDef="let user">{{ user.email }}</td></ng-container>
+          <ng-container matColumnDef="roles"><th mat-header-cell *matHeaderCellDef>Role</th><td mat-cell *matCellDef="let user">{{ rolesLabel(user) }}</td></ng-container>
+          <ng-container matColumnDef="status"><th mat-header-cell *matHeaderCellDef>Status</th><td mat-cell *matCellDef="let user">{{ statusLabel(user) }}</td></ng-container>
+          <ng-container matColumnDef="createdAt"><th mat-header-cell *matHeaderCellDef>Created</th><td mat-cell *matCellDef="let user">{{ user.createdAtUtc | date: 'mediumDate' }}</td></ng-container>
+          <ng-container matColumnDef="actions"><th mat-header-cell *matHeaderCellDef>Actions</th><td mat-cell *matCellDef="let user"><button mat-button type="button" (click)="openRoleDialog(user)" [attr.aria-label]="'Change role for ' + user.displayName">Change role</button></td></ng-container>
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+        </table>
+      </div>
+      <mat-paginator [length]="userPage.totalCount" [pageIndex]="userPage.pageNumber - 1" [pageSize]="userPage.pageSize" [pageSizeOptions]="[10, 20, 50, 100]" aria-label="User pages" (page)="onPageChange($event)" />
+    </mat-card>
+  }
+</main>

@@ -2,7 +2,7 @@
   <mat-sidenav #navigation mode="side" opened>
     <div class="brand">Smart Tasks</div>
     <nav aria-label="Primary navigation">
-      @for (item of navigationItems; track item.route) {
+      @for (item of navigationItems(); track item.route) {
         <a
           class="nav-link"
           [routerLink]="item.route"

@@ -10,6 +10,7 @@ using SmartTaskManagement.Application.Abstractions.Ai;
 using SmartTaskManagement.Application.Features.Ai;
 using SmartTaskManagement.Application.Features.Dashboard;
 using SmartTaskManagement.Application.Features.Tasks;
+using SmartTaskManagement.Application.Features.UserManagement;
 
 namespace SmartTaskManagement.Application;
 
@@ -29,6 +30,7 @@ public static class DependencyInjection
         services.AddScoped<ITaskService, TaskService>();
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<IAiTaskDescriptionService, AiTaskDescriptionService>();
+        services.AddScoped<UserManagementService>();
 
         return services;
     }

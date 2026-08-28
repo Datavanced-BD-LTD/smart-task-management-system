@@ -15,6 +15,8 @@ using SmartTaskManagement.Infrastructure.Persistence;
 using SmartTaskManagement.Infrastructure.Projects;
 using SmartTaskManagement.Infrastructure.Tasks;
 using SmartTaskManagement.Infrastructure.Dashboard;
+using SmartTaskManagement.Infrastructure.UserManagement;
+using SmartTaskManagement.Application.Abstractions.UserManagement;
 
 namespace SmartTaskManagement.Infrastructure;
 
@@ -77,6 +79,7 @@ public static class DependencyInjection
         services.AddScoped<IProjectStore, EfProjectStore>();
         services.AddScoped<ITaskStore, EfTaskStore>();
         services.AddScoped<IDashboardStore, EfDashboardStore>();
+        services.AddScoped<IUserManagementStore, EfUserManagementStore>();
         services.AddScoped<IAiTaskDescriptionProvider, OllamaAiTaskDescriptionProvider>();
         services.AddScoped<IPasswordService, AspNetPasswordService>();
         services.AddSingleton<ISystemClock, SystemClock>();
