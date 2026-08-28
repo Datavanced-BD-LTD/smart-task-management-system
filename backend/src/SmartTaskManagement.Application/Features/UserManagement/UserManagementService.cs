@@ -14,6 +14,7 @@ public sealed class UserManagementService(
     IPasswordService passwordService,
     ISystemClock systemClock,
     IValidator<CreateManagedUserRequest> createValidator,
+    IValidator<UpdateManagedUserRequest> updateValidator,
     IValidator<UpdateManagedUserRoleRequest> updateRoleValidator,
     IValidator<AdminUserListQuery> listValidator)
 {
@@ -86,6 +87,63 @@ public sealed class UserManagementService(
         await store.SaveChangesAsync(cancellationToken);
 
         return ToResponse(user);
+    }
+
+    public async Task<ManagedUserResponse> UpdateAsync(
+        Guid userId,
+        UpdateManagedUserRequest request,
+        IReadOnlyCollection<string> currentRoles,
+        CancellationToken cancellationToken)
+    {
+        EnsureAdmin(currentRoles);
+        await ValidateAsync(updateValidator, request, cancellationToken);
+
+        var user = await store.FindByIdAsync(userId, cancellationToken);
+        if (user is null || !user.IsActive)
+        {
+            throw new ManagedUserNotFoundException(userId);
+        }
+
+        var normalizedEmail = NormalizeEmail(request.Email);
+        var existingUser = await store.FindByNormalizedEmailAsync(
+            normalizedEmail,
+            cancellationToken);
+        if (existingUser is not null && existingUser.UserId != userId)
+        {
+            throw new DuplicateEmailException();
+        }
+
+        user.UpdateProfile(
+            request.Email,
+            request.FirstName,
+            request.LastName,
+            systemClock.UtcNow);
+        await store.SaveChangesAsync(cancellationToken);
+
+        return ToResponse(user);
+    }
+
+    public async Task DeleteAsync(
+        Guid userId,
+        Guid currentUserId,
+        IReadOnlyCollection<string> currentRoles,
+        CancellationToken cancellationToken)
+    {
+        EnsureAdmin(currentRoles);
+
+        var user = await store.FindByIdAsync(userId, cancellationToken);
+        if (user is null || !user.IsActive)
+        {
+            throw new ManagedUserNotFoundException(userId);
+        }
+
+        if (userId == currentUserId || HasRole(user, RoleNames.Admin))
+        {
+            throw new ProtectedUserException();
+        }
+
+        user.Deactivate(systemClock.UtcNow);
+        await store.SaveChangesAsync(cancellationToken);
     }
 
     private async Task<Role> FindManagedRoleAsync(

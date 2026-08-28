@@ -29,6 +29,14 @@ public sealed class EfUserManagementStore(ApplicationDbContext dbContext)
             .SingleOrDefaultAsync(user => user.UserId == userId, cancellationToken);
     }
 
+    public Task<User?> FindByNormalizedEmailAsync(
+        string normalizedEmail,
+        CancellationToken cancellationToken)
+    {
+        return dbContext.Users
+            .SingleOrDefaultAsync(user => user.NormalizedEmail == normalizedEmail, cancellationToken);
+    }
+
     public Task<Role?> FindRoleByNameAsync(
         string roleName,
         CancellationToken cancellationToken)

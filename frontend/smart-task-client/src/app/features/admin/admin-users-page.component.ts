@@ -14,6 +14,11 @@ import { ApiError } from '../../core/models/api-response.model';
 import { ManagedUserResponse } from '../../core/models/admin-user.model';
 import { ApiErrorService } from '../../core/services/api-error.service';
 import { AdminUsersService } from '../../core/services/admin-users.service';
+import { AuthService } from '../../core/services/auth.service';
+import {
+  ProjectConfirmationDialogComponent,
+  ProjectConfirmationDialogData,
+} from '../projects/project-confirmation-dialog.component';
 import {
   AdminUserFormDialogComponent,
   AdminUserFormDialogData,
@@ -39,6 +44,7 @@ import {
 export class AdminUsersPageComponent {
   private readonly adminUsersService = inject(AdminUsersService);
   private readonly apiErrorService = inject(ApiErrorService);
+  private readonly authService = inject(AuthService);
   private readonly dialog = inject(MatDialog);
 
   readonly displayedColumns = ['user', 'email', 'roles', 'status', 'createdAt', 'actions'];
@@ -108,11 +114,52 @@ export class AdminUsersPageComponent {
   }
 
   openCreateDialog(): void {
-    this.openUserDialog({});
+    this.openUserDialog({ mode: 'create' });
+  }
+
+  openEditDialog(user: ManagedUserResponse): void {
+    this.openUserDialog({ user, mode: 'edit' });
   }
 
   openRoleDialog(user: ManagedUserResponse): void {
-    this.openUserDialog({ user });
+    if (!this.canChangeRole(user)) return;
+    this.openUserDialog({ user, mode: 'role' });
+  }
+
+  canChangeRole(user: ManagedUserResponse): boolean {
+    return !this.isAdminUser(user) && user.userId !== this.authService.currentUser()?.userId;
+  }
+
+  canDeactivate(user: ManagedUserResponse): boolean {
+    return this.canChangeRole(user);
+  }
+
+  confirmDeactivate(user: ManagedUserResponse): void {
+    if (!this.canDeactivate(user)) return;
+
+    const data: ProjectConfirmationDialogData = {
+      title: 'Deactivate user?',
+      message: `This will prevent ${user.displayName || user.email} from signing in. Existing project and task history will be preserved.`,
+      confirmLabel: 'Deactivate user',
+    };
+
+    this.dialog
+      .open(ProjectConfirmationDialogComponent, { data, width: 'min(30rem, 94vw)' })
+      .afterClosed()
+      .pipe(
+        filter((confirmed): confirmed is true => confirmed === true),
+        switchMap(() => {
+          this.actionErrorMessage.set(null);
+          this.loading.set(true);
+          return this.adminUsersService
+            .delete(user.userId)
+            .pipe(finalize(() => this.loading.set(false)));
+        }),
+      )
+      .subscribe({
+        next: () => this.loadUsers(),
+        error: (error: unknown) => this.actionErrorMessage.set(this.apiErrorService.getMessage(error)),
+      });
   }
 
   rolesLabel(user: ManagedUserResponse): string {
@@ -138,9 +185,11 @@ export class AdminUsersPageComponent {
         switchMap((result) => {
           this.actionErrorMessage.set(null);
           this.loading.set(true);
-          const request = data.user
-            ? this.adminUsersService.updateRole(data.user.userId, result as { role: 'ProjectManager' | 'TeamMember' })
-            : this.adminUsersService.create(result as Parameters<AdminUsersService['create']>[0]);
+          const request = data.mode === 'edit' && data.user
+            ? this.adminUsersService.update(data.user.userId, result as Parameters<AdminUsersService['update']>[1])
+            : data.mode === 'role' && data.user
+              ? this.adminUsersService.updateRole(data.user.userId, result as Parameters<AdminUsersService['updateRole']>[1])
+              : this.adminUsersService.create(result as Parameters<AdminUsersService['create']>[0]);
           return request.pipe(finalize(() => this.loading.set(false)));
         }),
       )
@@ -148,5 +197,9 @@ export class AdminUsersPageComponent {
         next: () => this.loadUsers(),
         error: (error: unknown) => this.actionErrorMessage.set(this.apiErrorService.getMessage(error)),
       });
+  }
+
+  private isAdminUser(user: ManagedUserResponse): boolean {
+    return user.roles.some((role) => role.toLowerCase() === 'admin');
   }
 }

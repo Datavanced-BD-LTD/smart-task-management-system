@@ -13,14 +13,19 @@ import {
   CreateManagedUserRequest,
   ManagedUserResponse,
   ManagedUserRole,
+  UpdateManagedUserRequest,
   UpdateManagedUserRoleRequest,
 } from '../../core/models/admin-user.model';
 
 export interface AdminUserFormDialogData {
   readonly user?: ManagedUserResponse;
+  readonly mode?: 'create' | 'edit' | 'role';
 }
 
-export type AdminUserFormResult = CreateManagedUserRequest | UpdateManagedUserRoleRequest;
+export type AdminUserFormResult =
+  | CreateManagedUserRequest
+  | UpdateManagedUserRequest
+  | UpdateManagedUserRoleRequest;
 
 @Component({
   imports: [
@@ -33,11 +38,11 @@ export type AdminUserFormResult = CreateManagedUserRequest | UpdateManagedUserRo
   ],
   selector: 'app-admin-user-form-dialog',
   template: `
-    <h2 mat-dialog-title>{{ user ? 'Change user role' : 'Create user' }}</h2>
+    <h2 mat-dialog-title>{{ mode === 'role' ? 'Change user role' : mode === 'edit' ? 'Edit user' : 'Create user' }}</h2>
 
     <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
       <mat-dialog-content class="dialog-content">
-        @if (!user) {
+        @if (mode !== 'role') {
           <div class="name-fields">
             <mat-form-field appearance="outline">
               <mat-label>First name</mat-label>
@@ -57,38 +62,42 @@ export type AdminUserFormResult = CreateManagedUserRequest | UpdateManagedUserRo
             @if (getError('email')) { <mat-error>{{ getError('email') }}</mat-error> }
           </mat-form-field>
 
+          @if (mode === 'create') {
+            <mat-form-field appearance="outline">
+              <mat-label>Temporary password</mat-label>
+              <input
+                matInput
+                [type]="passwordVisible ? 'text' : 'password'"
+                formControlName="password"
+                autocomplete="new-password"
+              />
+              <button mat-button matSuffix type="button" (click)="passwordVisible = !passwordVisible">
+                {{ passwordVisible ? 'Hide' : 'Show' }}
+              </button>
+              @if (getError('password')) { <mat-error>{{ getError('password') }}</mat-error> }
+            </mat-form-field>
+          }
+        }
+
+        @if (mode !== 'edit') {
           <mat-form-field appearance="outline">
-            <mat-label>Temporary password</mat-label>
-            <input
-              matInput
-              [type]="passwordVisible ? 'text' : 'password'"
-              formControlName="password"
-              autocomplete="new-password"
-            />
-            <button mat-button matSuffix type="button" (click)="passwordVisible = !passwordVisible">
-              {{ passwordVisible ? 'Hide' : 'Show' }}
-            </button>
-            @if (getError('password')) { <mat-error>{{ getError('password') }}</mat-error> }
+            <mat-label>Role</mat-label>
+            <mat-select formControlName="role" aria-label="User role">
+              <mat-option value="ProjectManager">Project Manager</mat-option>
+              <mat-option value="TeamMember">Team Member</mat-option>
+            </mat-select>
+            @if (getError('role')) { <mat-error>{{ getError('role') }}</mat-error> }
           </mat-form-field>
         }
 
-        <mat-form-field appearance="outline">
-          <mat-label>Role</mat-label>
-          <mat-select formControlName="role" aria-label="User role">
-            <mat-option value="ProjectManager">Project Manager</mat-option>
-            <mat-option value="TeamMember">Team Member</mat-option>
-          </mat-select>
-          @if (getError('role')) { <mat-error>{{ getError('role') }}</mat-error> }
-        </mat-form-field>
-
-        @if (!user) {
+        @if (mode === 'create') {
           <p class="help-text">The user will receive the selected role immediately.</p>
         }
       </mat-dialog-content>
 
       <mat-dialog-actions align="end">
         <button mat-button type="button" mat-dialog-close>Cancel</button>
-        <button mat-flat-button type="submit">{{ user ? 'Save role' : 'Create user' }}</button>
+        <button mat-flat-button type="submit">{{ mode === 'role' ? 'Save role' : mode === 'edit' ? 'Save changes' : 'Create user' }}</button>
       </mat-dialog-actions>
     </form>
   `,
@@ -106,6 +115,7 @@ export class AdminUserFormDialogComponent {
   private readonly data = inject<AdminUserFormDialogData>(MAT_DIALOG_DATA);
 
   readonly user = this.data.user;
+  readonly mode = this.data.mode ?? (this.user ? 'role' : 'create');
   passwordVisible = false;
   readonly form = this.formBuilder.group({
     firstName: [this.user?.firstName ?? '', [Validators.required, Validators.maxLength(100)]],
@@ -113,7 +123,7 @@ export class AdminUserFormDialogComponent {
     email: [this.user?.email ?? '', [Validators.required, Validators.email, Validators.maxLength(256)]],
     password: [
       '',
-      this.user ? [] : [Validators.required, Validators.minLength(8), Validators.maxLength(128)],
+      this.mode === 'create' ? [Validators.required, Validators.minLength(8), Validators.maxLength(128)] : [],
     ],
     role: [this.initialRole(), [Validators.required]],
   });
@@ -126,9 +136,15 @@ export class AdminUserFormDialogComponent {
 
     const value = this.form.getRawValue();
     const role = value.role as ManagedUserRole;
-    const result: AdminUserFormResult = this.user
+    const result: AdminUserFormResult = this.mode === 'role'
       ? { role }
-      : {
+      : this.mode === 'edit'
+        ? {
+            firstName: value.firstName.trim(),
+            lastName: value.lastName.trim(),
+            email: value.email.trim(),
+          }
+        : {
           firstName: value.firstName.trim(),
           lastName: value.lastName.trim(),
           email: value.email.trim(),

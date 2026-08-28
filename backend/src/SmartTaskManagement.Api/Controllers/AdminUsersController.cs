@@ -67,6 +67,41 @@ public sealed class AdminUsersController(
             "User role updated successfully."));
     }
 
+    [HttpPut("{userId:guid}")]
+    public async Task<ActionResult<ApiResponse<ManagedUserResponse>>> Update(
+        Guid userId,
+        UpdateManagedUserRequest request,
+        CancellationToken cancellationToken)
+    {
+        var user = await userManagementService.UpdateAsync(
+            userId,
+            request,
+            GetCurrentUserRoles(),
+            cancellationToken);
+
+        return Ok(ApiResponseFactory.Success(
+            HttpContext,
+            user,
+            "User profile updated successfully."));
+    }
+
+    [HttpDelete("{userId:guid}")]
+    public async Task<ActionResult<ApiResponse<object?>>> Delete(
+        Guid userId,
+        CancellationToken cancellationToken)
+    {
+        await userManagementService.DeleteAsync(
+            userId,
+            GetCurrentUserId(),
+            GetCurrentUserRoles(),
+            cancellationToken);
+
+        return Ok(ApiResponseFactory.Success<object?>(
+            HttpContext,
+            null,
+            "User deactivated successfully."));
+    }
+
     private Guid GetCurrentUserId()
     {
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);

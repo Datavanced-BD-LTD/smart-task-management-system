@@ -48,4 +48,29 @@ describe('AdminUserFormDialogComponent', () => {
 
     expect(close).toHaveBeenCalledWith({ role: 'TeamMember' });
   });
+
+  it('allows editing an existing user profile without a password or role change', () => {
+    const { component, close } = createFixture({
+      mode: 'edit',
+      user: {
+        userId: 'user-1',
+        email: 'maria@example.com',
+        firstName: 'Maria',
+        lastName: 'Manager',
+        displayName: 'Maria Manager',
+        roles: ['ProjectManager'],
+        isActive: true,
+        createdAtUtc: '2026-08-28T00:00:00Z',
+      },
+    });
+
+    component.form.controls.lastName.setValue('Updated');
+    component.submit();
+
+    expect(close).toHaveBeenCalledWith({
+      firstName: 'Maria',
+      lastName: 'Updated',
+      email: 'maria@example.com',
+    });
+  });
 });

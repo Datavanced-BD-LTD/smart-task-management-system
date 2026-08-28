@@ -68,6 +68,25 @@ public sealed class User
         UpdatedAtUtc = updatedAtUtc;
     }
 
+    public void UpdateProfile(
+        string email,
+        string firstName,
+        string lastName,
+        DateTime updatedAtUtc)
+    {
+        Email = email.Trim().ToLowerInvariant();
+        NormalizedEmail = Email.ToUpperInvariant();
+        FirstName = firstName.Trim();
+        LastName = lastName.Trim();
+        UpdatedAtUtc = updatedAtUtc;
+    }
+
+    public void Deactivate(DateTime updatedAtUtc)
+    {
+        IsActive = false;
+        UpdatedAtUtc = updatedAtUtc;
+    }
+
     public void RecordSuccessfulLogin()
     {
         LastLoginAtUtc = DateTime.UtcNow;

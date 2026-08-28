@@ -14,6 +14,10 @@ public interface IUserManagementStore
         Guid userId,
         CancellationToken cancellationToken);
 
+    Task<User?> FindByNormalizedEmailAsync(
+        string normalizedEmail,
+        CancellationToken cancellationToken);
+
     Task<Role?> FindRoleByNameAsync(
         string roleName,
         CancellationToken cancellationToken);

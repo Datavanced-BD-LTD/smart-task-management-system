@@ -122,6 +122,60 @@ public sealed class UserManagementServiceTests
         Assert.Equal(2, result.TotalPages);
     }
 
+    [Fact]
+    public async Task Admin_can_update_user_profile_without_changing_password()
+    {
+        var user = CreateUser("member@example.com", "Old", "Name");
+        user.SetPasswordHash("EXISTING_HASH");
+        user.AssignRole(new Role(3, RoleNames.TeamMember));
+        var store = new FakeUserManagementStore(user);
+        var service = CreateService(store);
+
+        var result = await service.UpdateAsync(
+            user.UserId,
+            new UpdateManagedUserRequest(
+                "new.member@example.com",
+                "New",
+                "Name"),
+            [RoleNames.Admin],
+            CancellationToken.None);
+
+        Assert.Equal("new.member@example.com", result.Email);
+        Assert.Equal("New Name", result.DisplayName);
+        Assert.Equal("EXISTING_HASH", user.PasswordHash);
+    }
+
+    [Fact]
+    public async Task Admin_can_deactivate_a_non_admin_user()
+    {
+        var user = CreateUser("member@example.com", "Team", "Member");
+        user.AssignRole(new Role(3, RoleNames.TeamMember));
+        var store = new FakeUserManagementStore(user);
+        var service = CreateService(store);
+
+        await service.DeleteAsync(
+            user.UserId,
+            Guid.NewGuid(),
+            [RoleNames.Admin],
+            CancellationToken.None);
+
+        Assert.False(user.IsActive);
+    }
+
+    [Fact]
+    public async Task Admin_cannot_deactivate_their_own_account()
+    {
+        var admin = CreateUser("admin@example.com", "System", "Administrator");
+        admin.AssignRole(new Role(1, RoleNames.Admin));
+        var service = CreateService(new FakeUserManagementStore(admin));
+
+        await Assert.ThrowsAsync<ProtectedUserException>(() => service.DeleteAsync(
+            admin.UserId,
+            admin.UserId,
+            [RoleNames.Admin],
+            CancellationToken.None));
+    }
+
     private static UserManagementService CreateService(FakeUserManagementStore store)
     {
         return new UserManagementService(
@@ -129,6 +183,7 @@ public sealed class UserManagementServiceTests
             new FakePasswordService(),
             new FixedClock(),
             new CreateManagedUserRequestValidator(),
+            new UpdateManagedUserRequestValidator(),
             new UpdateManagedUserRoleRequestValidator(),
             new AdminUserListQueryValidator());
     }
@@ -172,6 +227,13 @@ public sealed class UserManagementServiceTests
         public Task<User?> FindByIdAsync(Guid userId, CancellationToken cancellationToken)
         {
             return Task.FromResult(users.SingleOrDefault(user => user.UserId == userId));
+        }
+
+        public Task<User?> FindByNormalizedEmailAsync(
+            string normalizedEmail,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(users.SingleOrDefault(user => user.NormalizedEmail == normalizedEmail));
         }
 
         public Task<Role?> FindRoleByNameAsync(string roleName, CancellationToken cancellationToken)

@@ -8,6 +8,7 @@ import {
   AdminUserListQuery,
   CreateManagedUserRequest,
   ManagedUserResponse,
+  UpdateManagedUserRequest,
   UpdateManagedUserRoleRequest,
 } from '../models/admin-user.model';
 
@@ -40,5 +41,19 @@ export class AdminUsersService {
       `${this.usersUrl}/${userId}/role`,
       request,
     );
+  }
+
+  update(
+    userId: string,
+    request: UpdateManagedUserRequest,
+  ): Observable<ApiResponse<ManagedUserResponse>> {
+    return this.http.put<ApiResponse<ManagedUserResponse>>(
+      `${this.usersUrl}/${userId}`,
+      request,
+    );
+  }
+
+  delete(userId: string): Observable<ApiResponse<null>> {
+    return this.http.delete<ApiResponse<null>>(`${this.usersUrl}/${userId}`);
   }
 }

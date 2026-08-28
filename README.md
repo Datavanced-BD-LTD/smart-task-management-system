@@ -374,6 +374,16 @@ The running server origin is `https://localhost:7173` in the HTTPS development p
 | GET | `/api/v1/auth/me` | Authenticated |
 | GET | `/api/v1/auth/admin-check` | Admin only |
 
+### Admin user management (`/api/v1/admin/users`)
+
+| Method | Route | Access |
+|---|---|---|
+| GET | `/api/v1/admin/users` | Admin only; supports keyword search and pagination |
+| POST | `/api/v1/admin/users` | Admin only; creates a Team Member or Project Manager |
+| PUT | `/api/v1/admin/users/{userId}` | Admin only; updates name and email |
+| PATCH | `/api/v1/admin/users/{userId}/role` | Admin only; changes between Team Member and Project Manager |
+| DELETE | `/api/v1/admin/users/{userId}` | Admin only; safely deactivates the account while preserving history |
+
 ### Projects and membership (`/api/v1`)
 
 | Method | Route | Access |

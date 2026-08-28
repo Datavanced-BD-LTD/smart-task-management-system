@@ -9,6 +9,11 @@ public sealed record CreateManagedUserRequest(
 
 public sealed record UpdateManagedUserRoleRequest(string Role);
 
+public sealed record UpdateManagedUserRequest(
+    string Email,
+    string FirstName,
+    string LastName);
+
 public sealed record AdminUserListQuery(
     string? Keyword = null,
     int PageNumber = 1,

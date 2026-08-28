@@ -26,6 +26,12 @@ export interface UpdateManagedUserRoleRequest {
   readonly role: ManagedUserRole;
 }
 
+export interface UpdateManagedUserRequest {
+  readonly email: string;
+  readonly firstName: string;
+  readonly lastName: string;
+}
+
 export interface AdminUserListQuery {
   readonly keyword?: string;
   readonly pageNumber: number;
