@@ -105,16 +105,18 @@ public sealed class EfProjectStore(ApplicationDbContext dbContext) : IProjectSto
                 cancellationToken);
     }
 
-    public Task<ProjectMember?> FindMemberAsync(
+    public async Task<ProjectMember?> FindMemberAsync(
         Guid projectId,
         Guid userId,
         CancellationToken cancellationToken)
     {
-        return dbContext.ProjectMembers
-            .Include(member => member.User)
-            .SingleOrDefaultAsync(
-                member => member.ProjectId == projectId && member.UserId == userId,
-                cancellationToken);
+        // Stored procedures cannot be composed with LINQ on SQL Server. Materialize
+        // the single membership row, while keeping it tracked for RemoveMemberAsync.
+        var members = await dbContext.ProjectMembers
+            .FromSqlInterpolated($"EXEC [dbo].[getProjectMember] @project_id = {projectId}, @user_id = {userId}")
+            .ToListAsync(cancellationToken);
+
+        return members.SingleOrDefault();
     }
 
     public async Task<IReadOnlyCollection<ProjectMember>> ListMembersAsync(
